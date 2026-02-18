@@ -17,6 +17,7 @@ struct StroopTestView: View {
     @Environment(\.dismiss) private var dismiss
     
     let onComplete: (Double) -> Void
+    let onDismiss: () -> Void
 
     
     let words = ["Red", "Blue","Green", "Yellow", "Orange", "Purple"]
@@ -62,7 +63,7 @@ struct StroopTestView: View {
                                     recordAnswer(selectedColor: colorValue)
                                 } label: {
                                     Text(colorName)
-                                        .foregroundColor(.gray)
+                                        .foregroundStyle(Color.gray)
                                         .font(.headline)
                                         .padding(12)
                                         .frame(minWidth: 60)

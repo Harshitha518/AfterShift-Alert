@@ -8,11 +8,9 @@
 import SwiftUI
 
 struct SpatialRecallTestView: View {
-    @Environment(\.dismiss) private var dismiss
-    
-    let onComplete: (Double) -> Void
+    let onComplete: @MainActor (Double) -> Void
+    let onDismiss: () -> Void
 
-    
     let gridSize = 3
     let sequenceLength = 5
     let flashDuration: TimeInterval = 0.8
@@ -36,17 +34,20 @@ struct SpatialRecallTestView: View {
     var body: some View {
         VStack(spacing: 30) {
             if testEnded {
-                VStack(spacing: 20) {
-                    Text("Spatial Recall Test Complete!")
-                        .font(.title)
+                VStack(spacing: 24) {
+                    Text("Test Complete")
+                        .font(.largeTitle)
                         .bold()
-                    Text("Overall Accuracy: \(String(format: "%.0f%%", overallAccuracy()))")
-                    if !reactionTimes.isEmpty {
-                        let avg = reactionTimes.reduce(0, +) / Double(reactionTimes.count)
-                        Text(String(format: "Average Reaction Time: %.2fs", avg))
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
+
+                    Text("This test measures working memory and spatial sequence recall.")
+                        .font(.subheadline)
+                        .foregroundStyle(Color.secondary)
+                        .multilineTextAlignment(.center)
+
+                    Button("Done") {
+                        onDismiss()
                     }
+                    .buttonStyle(.borderedProminent)
                 }
             } else {
                 Text("Round \(currentRound)/\(totalRounds) — \(showingFlash ? "Watch the sequence" : "Repeat the sequence")")
@@ -55,7 +56,7 @@ struct SpatialRecallTestView: View {
                 if !showingFlash {
                     Text("Step \(userInput.count)/\(sequenceLength)")
                         .font(.subheadline)
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(Color.secondary)
                 }
 
                 LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: gridSize), spacing: 20) {
@@ -80,7 +81,6 @@ struct SpatialRecallTestView: View {
         }
     }
 
-
     func startNextRound() {
         guard currentRound <= totalRounds else {
             finishTest()
@@ -100,7 +100,6 @@ struct SpatialRecallTestView: View {
         flashNextBlock()
     }
 
-
     func flashNextBlock() {
         guard currentFlashIndex < sequenceLength else {
             showingFlash = false
@@ -109,10 +108,8 @@ struct SpatialRecallTestView: View {
         }
 
         showingFlash = true
-        
         let blockToFlash = sequence[currentFlashIndex]
 
-        
         DispatchQueue.main.asyncAfter(deadline: .now() + flashDuration) {
             currentFlashIndex += 1
             flashNextBlock()
@@ -172,13 +169,26 @@ struct SpatialRecallTestView: View {
         guard totalTaps > 0 else { return 0 }
         return (Double(totalCorrectSteps) / Double(totalTaps)) * 100
     }
-    
+
     func finishTest() {
         testEnded = true
 
-        let accuracyScore = overallAccuracy() // 0–100
-        onComplete(accuracyScore)
-    }
+        let totalSteps = totalTaps
+        let accuracy = totalSteps > 0 ? Double(totalCorrectSteps) / Double(totalSteps) : 0
 
-    
+        // Average reaction time per tap
+        let avgReaction = reactionTimes.isEmpty ? 0 : reactionTimes.reduce(0, +) / Double(reactionTimes.count)
+
+        // Convert reaction time → speed score (0–100)
+        // Example: assume 3s is the slowest reasonable reaction per tap
+        let maxReaction: Double = 3
+        let speedScore = max(0, min(100, 100 * (1 - avgReaction / maxReaction)))
+
+        // Weighted alertness score: 70% accuracy, 30% speed
+        let alertnessScore = max(0, min(100, accuracy * 100 * 0.7 + speedScore * 0.3))
+
+        Task { @MainActor in
+            onComplete(alertnessScore)
+        }
+    }
 }

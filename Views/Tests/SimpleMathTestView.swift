@@ -13,9 +13,8 @@ struct MathQuestion {
 }
 
 struct SimpleMathTestView: View {
-    @Environment(\.dismiss) private var dismiss
-    
-    let onComplete: (Double) -> Void
+    let onComplete: @MainActor (Double) -> Void
+    let onDismiss: () -> Void
     
     let questionCount = 15
     let minNumber = 1
@@ -33,12 +32,20 @@ struct SimpleMathTestView: View {
     var body: some View {
         VStack(spacing: 30) {
             if testEnded {
-                VStack(spacing: 20) {
-                    Text("Math Test Complete!")
+                VStack(spacing: 24) {
+                    Text("Test Complete")
                         .font(.largeTitle)
-                    
-                    Text("Average Reaction Time: \(averageReactionTime(), specifier: "%.2f") s")
-                    Text("Accuracy: \(accuracyPercentage(), specifier: "%.0f")%")
+                        .bold()
+
+                    Text("This test measures focus, mental calculation speed, and accuracy.")
+                        .font(.subheadline)
+                        .foregroundStyle(Color.secondary)
+                        .multilineTextAlignment(.center)
+
+                    Button("Done") {
+                        onDismiss()
+                    }
+                    .buttonStyle(.borderedProminent)
                 }
             } else {
                 if !questions.isEmpty {
@@ -78,21 +85,14 @@ struct SimpleMathTestView: View {
 
     func generateQuestions(qCount: Int) -> [MathQuestion] {
         var generated: [MathQuestion] = []
-        
         for _ in 0..<qCount {
             let a = Int.random(in: minNumber...maxNumber)
             let b = Int.random(in: minNumber...maxNumber)
-            
-            let problem = "\(a) + \(b)"
-            let answer = a + b
-            
-            generated.append(MathQuestion(problem: problem, answer: answer))
+            generated.append(MathQuestion(problem: "\(a) + \(b)", answer: a + b))
         }
-        
         return generated
     }
     
-
     func startTest() {
         questions = generateQuestions(qCount: questionCount)
         currentIndex = 0
@@ -109,27 +109,53 @@ struct SimpleMathTestView: View {
         
         // Reaction time
         if let start = trialStartTime {
-            let reactionTime = Date().timeIntervalSince(start)
-            reactionTimes.append(reactionTime)
+            reactionTimes.append(Date().timeIntervalSince(start))
         } else {
             reactionTimes.append(0.0)
         }
         
         // Correctness
-        let userInt = Int(userAnswer) ?? -999 // invalid input treated as wrong
-        let correct = (userInt == currentQ.answer)
-        correctness.append(correct)
+        let userInt = Int(userAnswer) ?? -999
+        correctness.append(userInt == currentQ.answer)
         
-        // Move to next question
+        // Move to next question or finish
         userAnswer = ""
         if currentIndex + 1 < questions.count {
             currentIndex += 1
             trialStartTime = Date()
         } else {
             testEnded = true
+            finishTest()
         }
     }
     
+    func finishTest() {
+        let totalQuestions = correctness.count
+        guard totalQuestions > 0 else {
+            Task { @MainActor in
+                onComplete(0)
+            }
+            return
+        }
+        
+        // Accuracy (0–100)
+        let accuracy = accuracyPercentage()
+        
+        // Average reaction time (seconds)
+        let avgReaction = averageReactionTime()
+        
+        // Convert reaction time → speed score (0–100)
+        let maxReaction: Double = 10 // max reasonable seconds per question
+        let speedScore = max(0, min(100, 100 * (1 - avgReaction / maxReaction)))
+        
+        // Weighted alertness score: 70% accuracy, 30% speed
+        let alertnessScore = max(0, min(100, accuracy * 0.7 + speedScore * 0.3))
+        
+        Task { @MainActor in
+            onComplete(alertnessScore)
+        }
+    }
+
     func averageReactionTime() -> Double {
         guard !reactionTimes.isEmpty else { return 0.0 }
         return reactionTimes.reduce(0, +) / Double(reactionTimes.count)
