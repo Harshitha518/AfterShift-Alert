@@ -35,6 +35,7 @@ struct StroopTestView: View {
             VStack(spacing: 60) {
                 if testEnded {
                     Text("Test Complete")
+                        .foregroundStyle(.white)
                     
                     Button {
                         onDismiss()
@@ -51,6 +52,7 @@ struct StroopTestView: View {
                         VStack(spacing: 30) {
                             Text("Question \(currentIndex + 1)/\(questions.count)")
                                 .font(.headline)
+                                .foregroundStyle(.white)
                             
                             Text(currentQ.word)
                                 .font(.largeTitle)
@@ -153,6 +155,8 @@ struct StroopTestView: View {
             trialStartTime = Date()
         } else {
             testEnded = true
+            let score = calculateScore()
+            onComplete(score)
         }
 
     }
@@ -166,6 +170,48 @@ struct StroopTestView: View {
         guard !correctness.isEmpty else { return 0.0 }
         let correctCount = correctness.filter { $0 }.count
         return (Double(correctCount) / Double(correctness.count)) * 100
+    }
+    
+    func averageRT(forCongruent congruent: Bool) -> Double {
+        let filtered = zip(questions, reactionTimes)
+            .filter { $0.0.isCongruent == congruent }
+            .map { $0.1 }
+        
+        guard !filtered.isEmpty else { return 0 }
+        return filtered.reduce(0, +) / Double(filtered.count)
+    }
+
+    func accuracy(forCongruent congruent: Bool) -> Double {
+        let filtered = zip(questions, correctness)
+            .filter { $0.0.isCongruent == congruent }
+            .map { $0.1 }
+        
+        guard !filtered.isEmpty else { return 0 }
+        let correctCount = filtered.filter { $0 }.count
+        return Double(correctCount) / Double(filtered.count)
+    }
+    
+    func calculateScore() -> Double {
+        let congruentRT = averageRT(forCongruent: true)
+        let incongruentRT = averageRT(forCongruent: false)
+        
+        let congruentAcc = accuracy(forCongruent: true)
+        let incongruentAcc = accuracy(forCongruent: false)
+        
+        // Interference cost (reaction slowdown)
+        let interference = max(0, incongruentRT - congruentRT)
+        
+        // Normalized interference (0 - 1.5)
+        let interferenceScore = max(0, 100 - (interference / 1.5) * 100)
+        
+        // Accuracy score (weigh incongruent more)
+        let weightedAccuracy = (congruentAcc * 0.3) + (incongruentAcc * 0.7)
+        let accuracyScore = weightedAccuracy * 100
+        
+        // Final weighted score
+        let finalScore = (accuracyScore * 0.6) + (interferenceScore * 0.4)
+        
+        return min(max(finalScore, 0), 100)
     }
 
     

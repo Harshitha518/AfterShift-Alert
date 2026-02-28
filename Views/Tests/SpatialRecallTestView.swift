@@ -36,6 +36,7 @@ struct SpatialRecallTestView: View {
                         Text("Test Complete")
                             .font(.largeTitle)
                             .bold()
+                            .foregroundStyle(.white)
 
                                         
                         Button {
@@ -49,6 +50,7 @@ struct SpatialRecallTestView: View {
                 } else {
                     Text("Round \(currentRound)/\(totalRounds) — \(showingFlash ? "Watch the sequence" : "Repeat the sequence")")
                         .font(.headline)
+                        .foregroundStyle(.white)
                     
                     if !showingFlash {
                         Text("Step \(userInput.count)/\(sequenceLength)")

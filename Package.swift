@@ -8,13 +8,13 @@ import PackageDescription
 import AppleProductTypes
 
 let package = Package(
-    name: "SSC2026",
+    name: "AfterShift Alert",
     platforms: [
         .iOS("16.0")
     ],
     products: [
         .iOSApplication(
-            name: "SSC2026",
+            name: "AfterShift Alert",
             targets: ["AppModule"],
             bundleIdentifier: "Harshitha.SSC2026",
             displayVersion: "1.0",

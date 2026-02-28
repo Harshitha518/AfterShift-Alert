@@ -75,7 +75,6 @@ let testWeights: [AlertnessTestType: Double] = [
 // View showing option of all tests to take
 struct TestListView: View {
     let baseAlertness: AlertnessResult
-    let circadianLowWindow: String
     let wakeUpTime: Date
     let shiftEndTime: Date
 
@@ -130,7 +129,7 @@ struct TestListView: View {
             measures: "Focus & mental speed",
             domain: .mentalCalculation,
             duration: "10–15 sec",
-            instructions: "Solve quick addition problems as accurately and fast as possible. There are 25 rounds. Measures focus, calculation speed, and mental alertness.",
+            instructions: "Solve quick addition problems as accurately and fast as possible. There are 15 rounds. Measures focus, calculation speed, and mental alertness.",
             symbol: "plus.app.fill",
             type: .math,
             importance: .secondary
@@ -164,6 +163,7 @@ struct TestListView: View {
                                     Image(systemName: "list.number")
                                     Text("Step \(completedTests.count) of \(allTests.count)")
                                         .font(.headline)
+                                        .foregroundStyle(.white)
                                 }
                                 .foregroundStyle(.white.opacity(0.85))
                                 
@@ -238,7 +238,6 @@ struct TestListView: View {
                 .navigationDestination(isPresented: $goToFaceDetection) {
                     ReductionView(
                         alertness: combinedAlertness(),
-                        circadianLowWindow: circadianLowWindow,
                         wakeUpTime: wakeUpTime,
                         shiftEndTime: shiftEndTime
                     )
@@ -256,6 +255,7 @@ struct TestListView: View {
         }
     }
     
+    // Tests can only reduce score (performance can reveal hidden risk, but it can't override biological risk)
     func combinedAlertness() -> AlertnessResult {
         if completedTests.isEmpty {
             return baseAlertness
@@ -266,8 +266,12 @@ struct TestListView: View {
         
         for (testType, testScore) in completedTests {
             let weight = testWeights[testType] ?? 0
-            let penalty = (100 - testScore) * weight
+            let impairmentThreshold = 75.0
+            let deficit = max(0, impairmentThreshold - testScore)
+            let penalty = deficit * weight
             weightedPenalty += penalty
+            let maxTestImpact = 25.0
+            weightedPenalty = min(weightedPenalty, maxTestImpact)
             
             if testScore < 60 {
                 let testName = allTests.first(where: { $0.type == testType })?.name ?? "Test"
@@ -278,17 +282,6 @@ struct TestListView: View {
 
         var finalScore = baseAlertness.score - weightedPenalty
 
-        
-        if let reactionScore = completedTests[.reaction], reactionScore < 40 {
-            finalScore -= 15
-            testExplanations.append("Critical: Reaction time severely impaired")
-        }
-        
-        if let stroopScore = completedTests[.stroop], stroopScore < 45 {
-            finalScore -= 10
-            testExplanations.append("Warning: Cognitive control reduced")
-        }
-        
 
         finalScore = max(0, min(100, finalScore))
         
@@ -311,11 +304,9 @@ struct TestListView: View {
         }
         
         
-        let kss = 9.0 - (finalScore / 100.0) * 7.0
         
         return AlertnessResult(
             score: finalScore,
-            kssEquivalent: kss,
             confidence: confidence,
             explanation: allExplanations
         )

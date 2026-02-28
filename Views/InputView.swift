@@ -17,22 +17,39 @@ struct InputView: View {
     var guideText: String {
         switch guideStep {
         case .intro:
-            return "Let’s estimate your alertness for the end of your shift. Answer a few quick questions about your recent sleep and shift timing so we can estimate how ready you are to drive. The more accurate your inputs, the more meaningful your alertness score will be."
+            return """
+            Let’s estimate your alertness at the end of your night shift. 
+            You’ll answer a few brief questions about your recent sleep and work schedule so we can model your current level of physiological alertness. 
+            Accurate inputs will produce a more reliable alertness estimate.
+            """
             
         case .shiftTimeline:
-            return "First, set when you woke up and when your shift ends. These times help calculate your circadian alertness (Process C), which reflects the natural peaks and dips in attention across the day."
+            return """
+            First, enter when you woke up and when your shift ends. 
+            These times help estimate your circadian phase (Process C), which reflects predictable biological fluctuations in alertness across the 24 hour day. 
+            Alertness typically dips during the early morning hours (around 3–6 am) and rises after sunrise.
+            """
             
         case .sleepContext:
-            return "Next, indicate how much sleep you’ve had in the last 24 hours. This influences sleep pressure (Process S), which builds the longer you’re awake and recovers during sleep."
+            return """
+            Next, indicate how much sleep you’ve obtained in the past 24 hours. 
+            This informs sleep pressure (Process S), which builds the longer you remain awake and decreases during sleep. 
+            Higher sleep pressure is associated with slower reaction time, reduced vigilance, and increased driving risk.
+            """
             
         case .drivingHistory:
-            return "Finally, let us know if you’ve experienced any recent drowsy driving close calls. This adds context to your alertness risk, accounting for individual sensitivity to sleep deprivation."
+            return """
+            Finally, indicate whether you have experienced any recent drowsy-driving close calls. 
+            This provides additional risk context, accounting for individual differences in vulnerability to sleep loss and attentional lapses.
+            """
             
         case .review:
-            return "All done! Review your inputs and tap \"Analyze Driving Risk\". You will be presented with the option to take alertness tests."
+            return """
+            Review your inputs and tap "Analyze Driving Risk" to generate your alertness score. 
+            You will then have the option to complete brief cognitive tests to refine the estimate using real-time performance data.
+            """
         }
     }
-    
     var totalSteps: Int { 5 }
 
     var currentStepNumber: Int {
@@ -64,16 +81,16 @@ struct InputView: View {
     
     @State private var wakeUpTime: Date = {
         let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: Date())!
-        return Calendar.current.date(bySettingHour: 18, minute: 0, second: 0, of: yesterday)!
+        return Calendar.current.date(bySettingHour: 20, minute: 0, second: 0, of: yesterday)!
     }()
     
     @State private var shiftEndTime: Date = {
         Calendar.current.date(bySettingHour: 6, minute: 0, second: 0, of: Date())!
     }()
     
-    @State private var sleepHours = 5.0
-    @State private var sleepTwoDaysAgo = 5.0
-    @State private var sleepThreeDaysAgo = 5.0
+    @State private var sleepHours = 8.0
+    @State private var sleepTwoDaysAgo = 8.0
+    @State private var sleepThreeDaysAgo = 8.0
     
     @State private var hadCloseCall = false
     
@@ -301,7 +318,6 @@ struct InputView: View {
                                             sleepHistory: sleepHistory(),
                                             hadCloseCall: hadCloseCall
                                         ),
-                                        circadianLowWindow: "3–6 AM",
                                         wakeUpTime: wakeUpTime,
                                         shiftEndTime: shiftEndTime
                                     )

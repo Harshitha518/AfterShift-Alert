@@ -38,6 +38,7 @@ struct SymbolMatchingTestView: View {
                         Text("Test Complete")
                             .font(.largeTitle)
                             .bold()
+                            .foregroundStyle(.white)
                         
                         Button {
                             onDismiss()
@@ -50,9 +51,11 @@ struct SymbolMatchingTestView: View {
                 } else {
                     Text("Time Left: \(Int(timeLeft))s")
                         .font(.title2)
+                        .foregroundStyle(.white)
                     
                     VStack(spacing: 10) {
                         Text("Key:")
+                            .foregroundStyle(.white)
                             .bold()
                         HStack(spacing: 20) {
                             ForEach(symbols, id: \.self) { symbol in
@@ -60,6 +63,7 @@ struct SymbolMatchingTestView: View {
                                     if let number = symbolNumberMap[symbol] {
                                         Text("\(number) = \(getShapeName(for: symbol))")
                                             .font(.caption)
+                                            .foregroundStyle(.white)
                                             .bold()
                                     }
                                 }
@@ -69,6 +73,7 @@ struct SymbolMatchingTestView: View {
                     
                     Text("Match this symbol:")
                         .font(.headline)
+                        .foregroundStyle(.white)
                     Image(systemName: currentSymbol)
                         .resizable()
                         .frame(width: 80, height: 80)

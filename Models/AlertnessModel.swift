@@ -1,22 +1,11 @@
-//
-//  AlertnessModel.swift
-//  SSC2026
-//
-//  Core alertness computation using a constrained Two-Process Model
-//  with biologically enforced guards.
-//
-//  Process S: Homeostatic sleep pressure
-//  Process C: Circadian modulation
-//
-//  Designed to avoid unrealistic alertness under sleep deprivation.
-//
+// Calculates overall alertness (0 - 100) based on two main factors:
+//      - Process S (sleep/homeostatic pressure)
+//      - Process C (circadian rhythm)
 
 import Foundation
 
-
 struct AlertnessResult {
     let score: Double
-    let kssEquivalent: Double
     
     var confidence: Double = 0.95
     var explanation: [String] = []
@@ -25,27 +14,36 @@ struct AlertnessResult {
 
 struct AlertnessModel {
 
-
+    // Calculates overall alertness score
     static func computeAlertness(hoursAwake: Double, hoursSleptLast24h: Double, cumulativeSleepDebt: Double, currentHour: Int) -> Double {
 
+        // Process S
         let sleepScore = sleepRecoveryScore(
             hoursSlept: hoursSleptLast24h,
             cumulativeDebt: cumulativeSleepDebt
         )
+        // Process C
         let circadianScore = circadianAlertness(hour: currentHour)
+        
         let wakePenalty = wakeDurationPenalty(hoursAwake: hoursAwake)
-
-        //When well-rested, circadian rhythm has less impact
-        // When sleep-deprived, circadian rhythm dominates
-        let sleepDeprivation = max(0, 8 - hoursSleptLast24h) / 8.0  // 0 to 1
-        let sleepWeight = 0.80 - (sleepDeprivation * 0.25)  // 0.55 to 0.80
+        
+        // When well rested, circadian rhythm has less impact, but when sleep deprived, circadian rhythm dominates
+        // Calculate sleep debt out of 8 hours on a 0 - 1 scale
+        let sleepDeprivation = max(0, 8 - hoursSleptLast24h) / 8.0
+        // How much influence Process S has on alertness score on scale from 0.55 - 0.80
+        let sleepWeight = 0.80 - (sleepDeprivation * 0.25)
+        // Sets weight of Process C
         let circadianWeight = 1.0 - sleepWeight
             
+        // Biological score - combines Process S + C normalized alertness scores into one from 0 - 1
         var rawScore = sleepWeight * sleepScore + circadianWeight * circadianScore
+        
+        // Converts to 100 scale
         rawScore *= 100.0
+        // Subtracts penalty
         rawScore -= wakePenalty
         
-        // Biological hard guards
+        // Applies biological limits on score
         rawScore = applySleepGuards(score: rawScore, hoursSlept: hoursSleptLast24h)
 
         return clamp(rawScore, min: 0, max: 100)
@@ -53,54 +51,70 @@ struct AlertnessModel {
 
     // Process S (non-linear sleep recovery)
     private static func sleepRecoveryScore(hoursSlept: Double, cumulativeDebt: Double) -> Double {
+        
+        // Hours of sleep last night restricted between 0 - 9 (recovery benefit plateaus around 9 hours)
         let h = clamp(hoursSlept, min: 0, max: 9)
 
-        // logistic (sigmoid) function to model recovery curve
-      
-        let k = 1.2
-        let midpoint = 5.5
+        // Biological anchors
+        let requiredSleep = 8.0
+        let chronicRestrictionThreshold = 6.0
         
+        // Recovery transitions around chronic restriction boundary
+        let steepness = 1.0
+        // Logistic (sigmoid) function to model recovery curve
+        let baseRecovery = 1.0 / (1.0 + exp(-steepness * (h - chronicRestrictionThreshold)))
 
-        return 1.0 / (1.0 + exp(-k * (h - midpoint)))
+    
+        // Sleep debt over multiple days reduces recovery efficiency
+        let normalizedDebt = cumulativeDebt / requiredSleep
+        // Suppression capped at 50%
+        let debtImpact = min(normalizedDebt, 0.5)
+        
+        return baseRecovery * (1.0 - debtImpact)
     }
 
-    // Wake Duration Penalty
-
+    // Wake duration penalty (reduction in alertness from being awake over time)
     private static func wakeDurationPenalty(hoursAwake: Double) -> Double {
 
-        // No penalty under 16h awake
+        // Being awake impairs alertness significantly after ~16 hours
         guard hoursAwake > 16 else { return 0 }
 
+        // Penalize for hours awake past threshold
         let excess = hoursAwake - 16
-        return min(excess * 3.5, 30) // cap at −30 points
+        // Cap max at 25, so it doesn't dominate score
+        return min(excess * 3.5, 25)
     }
 
-    // Process C (Circadian Rhythm)
-
+    // Process C (sinusoidal circadian rhythm)
     private static func circadianAlertness(hour: Int) -> Double {
+        
+        let x = Double(hour)
+        let period = 24.0
+        
+        // Phase shift to make trough at 4 am
+        let phaseShift = -5.0 * Double.pi / 6.0
 
-        let peakHour = 15.0 // ~3 PM biological peak
-        let radians = (2.0 * Double.pi / 24.0) * (Double(hour) - peakHour)
+        // Use sine function to represent circadian cycle
+        let radians = (2.0 * Double.pi / period) * x + phaseShift
 
-        // Normalize sine wave to 0–1
+        // Normalize sine wave to 0 - 1
         return 0.5 + 0.5 * sin(radians)
     }
 
-    // Biological Guards
-
+    // Biological guards (prevents model from producing unrealistic high scores for extreme cases)
     private static func applySleepGuards(score: Double, hoursSlept: Double) -> Double {
 
-        // 0 hours of sleep is catastrophic
+        // 0 hours of sleep = extreme impairment
         if hoursSlept == 0 {
             return min(score, 12)
         }
 
-        // Severe deprivation hard-cap
+        // < 4 hours of sleep = severely sleep deprived, but not completely without sleep
         if hoursSlept < 4 {
             return min(score, 40)
         }
 
-        // Partial deprivation soft-cap
+        // < 6 = parial sleep deprivation, alertness still impaired, but not as badly
         if hoursSlept < 6 {
             return min(score, 65)
         }
@@ -109,6 +123,7 @@ struct AlertnessModel {
     }
 
 
+    // Ensures final score stays between 0 - 100
     private static func clamp(_ value: Double, min: Double, max: Double) -> Double {
         Swift.max(min, Swift.min(max, value))
     }

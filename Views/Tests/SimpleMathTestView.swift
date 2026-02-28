@@ -35,6 +35,7 @@ struct SimpleMathTestView: View {
                     VStack(spacing: 60) {
                         Text("Test Complete")
                             .font(.largeTitle)
+                            .foregroundStyle(.white)
                             .bold()
                         
 
@@ -53,19 +54,23 @@ struct SimpleMathTestView: View {
                         VStack(spacing: 20) {
                             Text("Question \(currentIndex + 1)/\(questions.count)")
                                 .font(.headline)
+                                .foregroundStyle(.white)
                             
                             Text(currentQ.problem)
                                 .font(.largeTitle)
+                                .foregroundStyle(.white)
                             
                             HStack {
                                 TextField("Answer", text: $userAnswer)
                                     .keyboardType(.numberPad)
                                     .textFieldStyle(RoundedBorderTextFieldStyle())
                                     .frame(width: 100)
+                                    .foregroundStyle(.white)
                                 
                                 Button("Submit") {
                                     recordAnswer()
                                 }
+                                .foregroundStyle(.white)
                                 .padding(10)
                                 .background(RoundedRectangle(cornerRadius: 8).stroke(Color.nightAccent, lineWidth: 2))
                             }

@@ -51,7 +51,18 @@ struct IntroView: View {
                     """
             }
         }
+        var imageName: String {
+            switch self {
+            case .risk:
+                return "Intro-night-shift"
+            case .whyItMatters:
+                return "Intro-driving-risk"
+            case .howAppWorks:
+                return "Intro-app"
+            }
+        }
     }
+
     
     @State private var currentStep: Step = .risk
     @State private var showNextScreen = false
@@ -82,19 +93,32 @@ struct IntroView: View {
                             
                             Divider().opacity(0.2)
                             
-                            VStack(alignment: .center, spacing: 30) {
+                            Text(currentStep.title)
+                                .font(.title.bold())
+                                .foregroundStyle(.white)
+                                .multilineTextAlignment(.center)
+                                .padding()
+                            
+                            
+                            HStack(alignment: .center, spacing: 40) {
     
-                                Text(currentStep.title)
-                                    .font(.title.bold())
-                                    .foregroundStyle(.white)
-                                    .multilineTextAlignment(.center)
-                                    .padding()
-                                
-       
-                                Text(currentStep.bodyText)
-                                    .font(.title)
-                                    .foregroundStyle(.white.opacity(0.8))
-                                    .multilineTextAlignment(.center)
+                                Image(currentStep.imageName)
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(minWidth: 200, maxWidth: 300)
+                                VStack(spacing: 20) {
+                                    ScrollView(.vertical) {
+                                        Text(currentStep.bodyText)
+                                            .font(.title)
+                                            .foregroundStyle(.white.opacity(0.8))
+                                            .multilineTextAlignment(.center)
+                                        
+                                    }
+                                    
+                                    Text("Scroll to read more")
+                                        .font(.headline)
+                                        .foregroundStyle(.white.opacity(0.6))
+                                }
                             }
                             
                             Spacer(minLength: 20)

@@ -16,7 +16,7 @@ struct AlertnessExplanation {
     @Guide(description: "Identify the strongest remaining risk factor affecting alertness.")
     var mainRiskFactor: String
 
-    @Guide(description: "Provide one clear, practical safety recommendation if risk remains. If risk is low, say no additional action is needed.")
+    @Guide(description: "Provide one clear, practical safety recommendation if alertness remains low. Driving should not be occuring when alertness is low. If alertness is high, say no additional action is needed.")
     var recommendation: String
 }
 
@@ -24,6 +24,7 @@ struct AlertnessExplanation {
 @available(iOS 26.0, *)
 struct AIExplanationView: View {
 
+    let alertness: AlertnessResult
     let baseScore: Double
     let finalScore: Double
     let delayMinutes: Double
@@ -32,24 +33,30 @@ struct AIExplanationView: View {
     let freshAir: Bool
     let departureTime: Date
     let circadianPhase: CircadianPhase
-    let cognitiveContribution: Double
 
     @State private var responseContent: AlertnessExplanation?
 
     var body: some View {
         Card {
-            VStack(alignment: .leading, spacing: 12) {
-
-                if let responseContent {
-                    Text(responseContent.scoreInterpretation)
-                    Text("Strongest improvement: \(responseContent.strongestImprovement)")
-                    Text("Remaining risk: \(responseContent.mainRiskFactor)")
-                    Text("Recommendation: \(responseContent.recommendation)")
-                } else {
-                    ProgressView("Analyzing alertness…")
+            HStack {
+                Spacer()
+                VStack(alignment: .leading, spacing: 12) {
+                    
+                    if let responseContent {
+                        Text(responseContent.scoreInterpretation)
+                            .foregroundStyle(.white)
+                        Text("Strongest improvement: \(responseContent.strongestImprovement)")
+                            .foregroundStyle(.white)
+                        Text("Remaining risk: \(responseContent.mainRiskFactor)")
+                            .foregroundStyle(.white)
+                        Text("Recommendation: \(responseContent.recommendation)")
+                            .foregroundStyle(.white)
+                    } else {
+                        ProgressView("Analyzing alertness…")
+                    }
                 }
+                Spacer()
             }
-            .frame(maxWidth: .infinity)
     
         }
         .task {
@@ -60,16 +67,19 @@ struct AIExplanationView: View {
     }
     func generateExplanation() async {
         let instructions = """
-        You are a calm, evidence-based assistant explaining night-shift driving alertness.
-        Do NOT alter numbers.
+        You are a calm evidence based assistant explaining night shift driving alertness.
+        Do not alter numbers.
         Focus on interpreting the score, key improvements, and remaining risks.
         Provide concise structured outputs.
         Any alertness below 40 is extremely low and driving will be dangerous. Anything above 70 is safe.
+        Scores are all out of 100.
         """
 
         let prompt = """
+        Explanations: 
+        \(alertness.explanation.joined(separator: "\n"))
+        
         Base alertness score: \(baseScore) / 100
-        Cognitive test contribution: \(cognitiveContribution)
         Interventions:
         - Departure delay: \(delayMinutes) min
         - Nap: \(napMinutes) min

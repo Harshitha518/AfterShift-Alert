@@ -5,6 +5,7 @@ import SwiftUI
 // Final view (display of score + adjustments and advice)
 struct FinalDecisionView: View {
 
+    let alertness: AlertnessResult
     let baseScore: Double
     let finalScore: Double
     let delayMinutes: Double
@@ -13,7 +14,6 @@ struct FinalDecisionView: View {
     let freshAir: Bool
     let departureTime: Date
     let circadianPhase: CircadianPhase
-    let cognitiveContribution: Double
     
     let onReduceMore: () -> Void
     let onStartOver: () -> Void
@@ -60,8 +60,9 @@ struct FinalDecisionView: View {
                     VStack(spacing: 12) {
                         Text("Final Drive Assessment")
                             .font(.system(size: 40, weight: .black))
+                            .foregroundStyle(.white)
 
-                        Text("Your projected driving alertness")
+                        Text("Your projected driving alertness / 100")
                             .font(.title3)
                             .foregroundStyle(.white.opacity(0.7))
                     }
@@ -166,13 +167,6 @@ struct FinalDecisionView: View {
                             if freshAir {
                                 BreakdownRow(title: "Fresh Air", value: 4)
                             }
-
-                            if cognitiveContribution > 0 {
-                                BreakdownRow(
-                                    title: "Cognitive Tests",
-                                    value: cognitiveContribution
-                                )
-                            }
                         }
                     }
 
@@ -183,9 +177,11 @@ struct FinalDecisionView: View {
 
                             Text("Adjusted Departure Plan")
                                 .font(.title3.bold())
+                                .foregroundStyle(.white)
 
                             Text(departureTime.formatted(date: .omitted, time: .shortened))
                                 .font(.system(size: 28, weight: .bold))
+                                .foregroundStyle(.white)
 
                             Text(circadianLabel)
                                 .foregroundStyle(
@@ -200,6 +196,7 @@ struct FinalDecisionView: View {
                     // AI Explanation
                     if #available(iOS 26.0, *) {
                         AIExplanationView(
+                            alertness: alertness,
                             baseScore: baseScore,
                             finalScore: finalScore,
                             delayMinutes: delayMinutes,
@@ -207,8 +204,7 @@ struct FinalDecisionView: View {
                             caffeineLevel: caffeineLevel,
                             freshAir: freshAir,
                             departureTime: departureTime,
-                            circadianPhase: circadianPhase,
-                            cognitiveContribution: cognitiveContribution
+                            circadianPhase: circadianPhase
                         )
                     }
                     

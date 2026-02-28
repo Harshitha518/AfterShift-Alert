@@ -21,11 +21,13 @@ struct TitleView: View {
                         .padding(.horizontal, 40)
                     
                     Card {
-                        Text("See how your sleep, circadian rhythm, attention, and commute affect alertness after a night shift. Learn how safe it is to drive home and what actions can reduce your risk.")
-                            .font(.title3)
-                            .foregroundStyle(Color.white)
-                            .multilineTextAlignment(.center)
-                            .padding()
+                        VStack {
+                            Text("See how your sleep, circadian rhythm, attention, and commute affect alertness after a night shift. Learn how safe it is to drive home and what actions can reduce your risk.")
+                                .font(.title3)
+                                .foregroundStyle(Color.white)
+                                .multilineTextAlignment(.center)
+                                .padding()
+                        }
                     }
                     
                                 

@@ -12,7 +12,6 @@ enum CircadianPhase {
 // View where users make adjustments to their alertness score + view effects in real time
 struct ReductionView: View {
     let alertness: AlertnessResult
-    let circadianLowWindow: String
     let wakeUpTime: Date
     let shiftEndTime: Date
     
@@ -26,53 +25,60 @@ struct ReductionView: View {
     }
     
     
-        var guideText: String {
-            switch guideStep {
-            case .intro:
-                return """
-                Now you can simulate actions to get a sense of what's the best way to increase short term alertness and reduce immediate driving risk after your night shift.
-                Your base alertness score is \(Int(alertness.score)), calculated from your sleep, circadian rhythm, and any optional cognitive tests you completed.
-                """
-            case .departureTime:
-                return """
-                Delaying your departure can help you avoid circadian lows (3 - 6 AM), when alertness naturally dips. Delaying your departure can also reduce your alertness score if the delay pushes you into a circadian low.
-                Your score will be adjusted based on how much you delay your commute.
-                """
-            case .nap:
-                return """
-                Taking short naps (10 - 20 min) restore alertness with minimal sleep inertia.
-                Taking longer naps provide diminishing returns and may temporarily reduce alertness.
-                """
-            case .caffeine:
-                return """
-                Intaking caffeine provides a temporary boost to attention and reaction time.
-                Each level increases your score slightly, but effects are short-lived.
-                """
-            case .environment:
-                return """
-                Fresh air and exposure to bright light can stimulate alertness.
-                Movement and morning sunlight help accelerate circadian recovery.
-                """
-            case .results:
-                return """
-                You now have an adjusted alertness score after considering all interventions.
-                Green indicates safe, yellow indicates moderate risk, and red indicates high risk.
-                Explore combinations of options to find the interventions most optimal and convenient for you.
-                """
-            }
+    var guideText: String {
+        switch guideStep {
+        case .intro:
+            return """
+            You can now simulate short term strategies to improve alertness and reduce immediate driving risk after your shift.
+            Your current alertness score (\(Int(alertness.score))) reflects your sleep, circadian timing, and any cognitive tests completed.
+            Adjust the options below to see how interventions affect your projected alertness.
+            This simulator only helps estimates alertness changes (not meant to replace medical advice).
+            """
+            
+        case .departureTime:
+            return """
+            Your departure time affects your circadian phase. Driving during the early morning circadian low (3 – 6 am) reduces alertness.
+            Delaying your departure into circadian recovery hours (6 – 10 am) increases alertness, with greater benefit the longer you delay.
+            Neutral hours provide smaller improvements. Your score will update in real time based on your chosen delay.
+            """
+            
+        case .nap:
+            return """
+            Short naps (10 – 20 minutes) temporarily increase alertness, with benefits increasing up to about 20 minutes.
+            Longer naps may reduce the immediate alertness benefit due to sleep inertia.
+            """
+            
+        case .caffeine:
+            return """
+            Caffeine intake can improve attention and reaction speed.
+            Higher intake levels produce larger short - term improvements.
+            """
+            
+        case .environment:
+            return """
+            Environmental factors can modestly boost alertness.
+            Fresh air and bright light provide small benefits, while exposure to natural morning light offers the strongest circadian boost.
+            """
+            
+        case .results:
+            return """
+            Your adjusted alertness score reflects the combined effect of all interventions.
+            Green indicates lower predicted risk, yellow indicates moderate risk, and red indicates elevated risk.
+            Experiment with combinations to identify practical strategies that improve alertness before driving.
+            """
         }
-    
-        
-        var guideTitle: String {
-            switch guideStep {
-            case .intro: return "What Can You Do Now?"
-            case .departureTime: return "Adjust Departure Time"
-            case .nap: return "Take a Nap"
-            case .caffeine: return "Caffeine Intake"
-            case .environment: return "Environmental Factors"
-            case .results: return "Final Alertness"
-            }
+    }
+
+    var guideTitle: String {
+        switch guideStep {
+        case .intro: return "What Can You Do Now?"
+        case .departureTime: return "Adjust Departure Time"
+        case .nap: return "Take a Nap"
+        case .caffeine: return "Caffeine Intake"
+        case .environment: return "Environmental Factors"
+        case .results: return "Final Alertness"
         }
+    }
     
     var totalSteps: Int { 6 }
 
@@ -123,20 +129,33 @@ struct ReductionView: View {
         
         let napBenefit: Double
 
-        if napMinutes <= 20 {
-            napBenefit = napMinutes / 10 * 5
+        if napMinutes == 0 {
+            napBenefit = 0
+        } else if napMinutes <= 20 {
+            // Max = + 6
+            napBenefit = napMinutes / 10 * 3
         } else {
-            napBenefit = 10
+            // Interia
+            napBenefit = 6 - ((napMinutes - 20) / 10 * 4)
         }
-
+        
         score += napBenefit
 
 
 
   
-        score += Double(min(caffeineLevel * 6, 12))
+        score += Double(min(caffeineLevel * 4, 8))
 
-        if freshAir { score += 4 }
+        if freshAir {
+            score += 2
+        }
+        if shiftLight {
+            score += 2
+        }
+        if morningLight {
+            score += 3
+        }
+
 
         return min(max(score, 0), 100)
     }
@@ -252,13 +271,17 @@ struct ReductionView: View {
                                     Image(systemName: "steeringwheel")
                                     Text("Adjust Departure Time")
                                         .font(.headline)
+                                        .foregroundStyle(.white)
                                 }
+                                
                                 VStack(alignment: .leading) {
                                     HStack {
                                         Text("Delay Departure")
+                                            .foregroundStyle(.white)
                                         Spacer()
                                         Text("\(Int(delayMinutes)) min")
                                             .font(.headline)
+                                            .foregroundStyle(.white)
                                     }
                                     Slider(value: $delayMinutes, in: 0...60, step: 10)
                                         .tint(.nightAccent)
@@ -268,6 +291,7 @@ struct ReductionView: View {
                                         Spacer()
                                         Text("\(Int(napMinutes)) min")
                                             .font(.headline)
+                                            .foregroundStyle(.white)
                                     }
                                     Slider(value: $napMinutes, in: 0...30, step: 10)
                                         .tint(.nightAccent)
@@ -279,6 +303,7 @@ struct ReductionView: View {
                                 
                                 Text("Total departure shift: \(Int(effectiveDelayMinutes)) min")
                                     .font(.headline)
+                                    .foregroundStyle(.white)
                             }
                         }
                         .highlight(guideStep == .departureTime || guideStep == .nap)
@@ -292,6 +317,7 @@ struct ReductionView: View {
                                     Image(systemName: "cup.and.saucer.fill")
                                     Text("Caffeine Intake")
                                         .font(.headline)
+                                        .foregroundStyle(.white)
                                 }
                                 
                                 VStack(alignment: .leading) {
@@ -316,6 +342,7 @@ struct ReductionView: View {
                                     Image(systemName: "cloud.sun.fill")
                                     Text("Environmental Factors")
                                         .font(.headline)
+                                        .foregroundStyle(.white)
                                 }
                                 
                                 VStack(alignment: .leading) {
@@ -347,7 +374,7 @@ struct ReductionView: View {
                     // Real-time alertness score
                     Card {
                         VStack(spacing: 16) {
-                            Text("Alertness Score")
+                            Text("Alertness Score / 100")
                                 .font(.headline)
                                 .foregroundStyle(.secondary)
                             
@@ -386,6 +413,7 @@ struct ReductionView: View {
             .navigationTitle("Risk Reduction Simulator")
             .navigationDestination(isPresented: $showFinalScreen) {
                 FinalDecisionView(
+                    alertness: alertness,
                     baseScore: alertness.score,
                     finalScore: adjustedAlertness,
                     delayMinutes: effectiveDelayMinutes,
@@ -394,7 +422,6 @@ struct ReductionView: View {
                     freshAir: freshAir,
                     departureTime: departureTime,
                     circadianPhase: circadianPhase(at: departureTime),
-                    cognitiveContribution: alertness.score - alertness.kssEquivalent,
 
                     onReduceMore: {
                         showFinalScreen = false
@@ -464,17 +491,17 @@ struct ReductionView: View {
         let phase = circadianPhase(at: departureTime)
 
         switch phase {
+
         case .deepLow:
-            // Staying awake longer during circadian low is harmful
-            return +6
+            // Worse if you drive during circadian low
+            return -6
 
         case .rising:
-            // Delaying into circadian recovery helps
-            return -min(Int(delayMinutes / 15) * 3, 9)
+            // Benefit for reaching circadian recovery
+            return min(Int(delayMinutes / 20) * 3, 6)
 
         case .neutral:
-            // Small benefit only
-            return -min(Int(delayMinutes / 30) * 2, 4)
+            return min(Int(delayMinutes / 30) * 2, 4)
         }
     }
 }

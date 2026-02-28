@@ -10,7 +10,7 @@ struct ReactionTapTestView: View {
     @State private var currentStimulus = 0
     @State private var isWaiting = true
     @State private var startTime: Date?
-    @State private var reactionTimes: [Double] = []  // Store in SECONDS
+    @State private var reactionTimes: [Double] = []
     @State private var message = "Get ready..."
     @State private var testEnded = false
     
@@ -37,6 +37,7 @@ struct ReactionTapTestView: View {
                 } else {
                     Text("Reaction Tap Test")
                         .font(.title2)
+                        .foregroundStyle(.white)
                         .bold()
                     
                     Text("Stimulus \(currentStimulus + 1)/\(totalStimuli)")
@@ -69,17 +70,14 @@ struct ReactionTapTestView: View {
             
             let avgSec = averageReactionTime()
 
-            let reactionScore: Double
-            if avgSec < 0.25 {
-                reactionScore = 100
-            } else if avgSec < 0.4 {
-                reactionScore = 100 - ((avgSec - 0.25) / 0.15) * 30
-            } else if avgSec < 0.6 {
-                reactionScore = 70 - ((avgSec - 0.4) / 0.2) * 30
-            } else {
-                reactionScore = max(0, 40 - ((avgSec - 0.6) / 0.4) * 40)
-            }
+            let minRT = 0.2
+            let maxRT = 0.9
 
+            let clamped = min(max(avgSec, minRT), maxRT)
+            let normalized = (clamped - minRT) / (maxRT - minRT)
+
+            let reactionScore = 100 * (1 - pow(normalized, 1.5))
+            
             Task { @MainActor in
                 onComplete(reactionScore)
             }
