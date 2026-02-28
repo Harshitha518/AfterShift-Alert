@@ -1,17 +1,13 @@
-//
-//  MathTestView.swift
-//  SSC2026
-//
-//  Created by Harshitha Rajesh on 1/10/26.
-//
 
 import SwiftUI
 
+// Components of a math question
 struct MathQuestion {
     var problem: String
     var answer: Int
 }
 
+// Math test
 struct SimpleMathTestView: View {
     let onComplete: @MainActor (Double) -> Void
     let onDismiss: () -> Void
@@ -30,56 +26,60 @@ struct SimpleMathTestView: View {
     @State private var userAnswer: String = ""
     
     var body: some View {
-        VStack(spacing: 30) {
-            if testEnded {
-                VStack(spacing: 24) {
-                    Text("Test Complete")
-                        .font(.largeTitle)
-                        .bold()
-
-                    Text("This test measures focus, mental calculation speed, and accuracy.")
-                        .font(.subheadline)
-                        .foregroundStyle(Color.secondary)
-                        .multilineTextAlignment(.center)
-
-                    Button("Done") {
-                        onDismiss()
-                    }
-                    .buttonStyle(.borderedProminent)
-                }
-            } else {
-                if !questions.isEmpty {
-                    let currentQ = questions[currentIndex]
-                    
-                    VStack(spacing: 20) {
-                        Text("Question \(currentIndex + 1)/\(questions.count)")
-                            .font(.headline)
-                        
-                        Text(currentQ.problem)
+        ZStack {
+            Background()
+                .ignoresSafeArea()
+            
+            VStack(spacing: 30) {
+                if testEnded {
+                    VStack(spacing: 60) {
+                        Text("Test Complete")
                             .font(.largeTitle)
+                            .bold()
                         
-                        HStack {
-                            TextField("Answer", text: $userAnswer)
-                                .keyboardType(.numberPad)
-                                .textFieldStyle(RoundedBorderTextFieldStyle())
-                                .frame(width: 100)
-                            
-                            Button("Submit") {
-                                recordAnswer()
-                            }
-                            .padding(10)
-                            .background(RoundedRectangle(cornerRadius: 8).stroke(Color.blue, lineWidth: 2))
+
+                        Button {
+                            onDismiss()
+                        } label: {
+                            PrimaryButtonStyleView(title: "Done")
                         }
+                        .padding(.horizontal)
+
                     }
-                    .onAppear {
-                        trialStartTime = Date()
+                } else {
+                    if !questions.isEmpty {
+                        let currentQ = questions[currentIndex]
+                        
+                        VStack(spacing: 20) {
+                            Text("Question \(currentIndex + 1)/\(questions.count)")
+                                .font(.headline)
+                            
+                            Text(currentQ.problem)
+                                .font(.largeTitle)
+                            
+                            HStack {
+                                TextField("Answer", text: $userAnswer)
+                                    .keyboardType(.numberPad)
+                                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                                    .frame(width: 100)
+                                
+                                Button("Submit") {
+                                    recordAnswer()
+                                }
+                                .padding(10)
+                                .background(RoundedRectangle(cornerRadius: 8).stroke(Color.nightAccent, lineWidth: 2))
+                            }
+                        }
+                        .onAppear {
+                            trialStartTime = Date()
+                        }
                     }
                 }
             }
-        }
-        .padding()
-        .onAppear {
-            startTest()
+            .padding()
+            .onAppear {
+                startTest()
+            }
         }
     }
 
@@ -107,18 +107,17 @@ struct SimpleMathTestView: View {
         guard currentIndex < questions.count else { return }
         let currentQ = questions[currentIndex]
         
-        // Reaction time
         if let start = trialStartTime {
             reactionTimes.append(Date().timeIntervalSince(start))
         } else {
             reactionTimes.append(0.0)
         }
         
-        // Correctness
+
         let userInt = Int(userAnswer) ?? -999
         correctness.append(userInt == currentQ.answer)
         
-        // Move to next question or finish
+
         userAnswer = ""
         if currentIndex + 1 < questions.count {
             currentIndex += 1
@@ -138,17 +137,14 @@ struct SimpleMathTestView: View {
             return
         }
         
-        // Accuracy (0–100)
         let accuracy = accuracyPercentage()
         
-        // Average reaction time (seconds)
+
         let avgReaction = averageReactionTime()
         
-        // Convert reaction time → speed score (0–100)
-        let maxReaction: Double = 10 // max reasonable seconds per question
+        let maxReaction: Double = 10
         let speedScore = max(0, min(100, 100 * (1 - avgReaction / maxReaction)))
         
-        // Weighted alertness score: 70% accuracy, 30% speed
         let alertnessScore = max(0, min(100, accuracy * 0.7 + speedScore * 0.3))
         
         Task { @MainActor in

@@ -1,12 +1,7 @@
-//
-//  SwiftUIView.swift
-//  SSC2026
-//
-//  Created by Harshitha Rajesh on 1/4/26.
-//
 
 import SwiftUI
 
+// Symbol matching test
 struct SymbolMatchingTestView: View {
     @Environment(\.dismiss) private var dismiss
     
@@ -30,85 +25,86 @@ struct SymbolMatchingTestView: View {
     @State private var symbolShownTime = Date()
     @State private var reactionTimes: [Double] = []
     
-    // Feedback
     @State private var selectedChoice: Int? = nil
     @State private var lastCorrect: Bool? = nil
     
     var body: some View {
-        VStack(spacing: 30) {
-            if testEnded {
-                VStack(spacing: 24) {
-                    Text("Test Complete")
-                        .font(.largeTitle)
-                        .bold()
+        ZStack {
+            Background()
+                .ignoresSafeArea()
+            VStack(spacing: 30) {
+                if testEnded {
+                    VStack(spacing: 60) {
+                        Text("Test Complete")
+                            .font(.largeTitle)
+                            .bold()
+                        
+                        Button {
+                            onDismiss()
+                        } label: {
+                            PrimaryButtonStyleView(title: "Done")
+                        }
+                        .padding(.horizontal)
 
-                    Text("This test measures attention, processing speed, and visual-motor coordination.")
-                        .font(.subheadline)
-                        .foregroundStyle(Color.secondary)
-                        .multilineTextAlignment(.center)
-
-                    Button("Done") {
-                        onDismiss()
                     }
-                    .buttonStyle(.borderedProminent)
-                }
-            } else {
-                Text("Time Left: \(Int(timeLeft))s")
-                    .font(.title2)
-                
-                VStack(spacing: 10) {
-                    Text("Key:")
-                        .bold()
-                    HStack(spacing: 20) {
-                        ForEach(symbols, id: \.self) { symbol in
-                            VStack {
-                                if let number = symbolNumberMap[symbol] {
-                                    Text("\(number) = \(getShapeName(for: symbol))")
-                                        .font(.caption)
-                                        .bold()
+                } else {
+                    Text("Time Left: \(Int(timeLeft))s")
+                        .font(.title2)
+                    
+                    VStack(spacing: 10) {
+                        Text("Key:")
+                            .bold()
+                        HStack(spacing: 20) {
+                            ForEach(symbols, id: \.self) { symbol in
+                                VStack {
+                                    if let number = symbolNumberMap[symbol] {
+                                        Text("\(number) = \(getShapeName(for: symbol))")
+                                            .font(.caption)
+                                            .bold()
+                                    }
                                 }
                             }
                         }
                     }
-                }
-
-                Text("Match this symbol:")
-                    .font(.headline)
-                Image(systemName: currentSymbol)
-                    .resizable()
-                    .frame(width: 80, height: 80)
-                    .padding()
-                
-                HStack(spacing: 20) {
-                    ForEach(symbols, id: \.self) { symbol in
-                        if let number = symbolNumberMap[symbol] {
-                            Button("\(number)") {
-                                handleAnswer(choice: number)
+                    
+                    Text("Match this symbol:")
+                        .font(.headline)
+                    Image(systemName: currentSymbol)
+                        .resizable()
+                        .frame(width: 80, height: 80)
+                        .padding()
+                    
+                    HStack(spacing: 20) {
+                        ForEach(symbols, id: \.self) { symbol in
+                            if let number = symbolNumberMap[symbol] {
+                                Button("\(number)") {
+                                    handleAnswer(choice: number)
+                                }
+                                .font(.title2)
+                                .bold()
+                                .frame(width: 60, height: 60)
+                                .background(buttonColor(for: number))
+                                .foregroundStyle(Color.white)
+                                .cornerRadius(8)
+                                .scaleEffect(selectedChoice == number ? 0.9 : 1.0)
+                                .animation(.spring(response: 0.3, dampingFraction: 0.6), value: selectedChoice)
                             }
-                            .font(.title2)
-                            .bold()
-                            .frame(width: 60, height: 60)
-                            .background(buttonColor(for: number))
-                            .foregroundStyle(Color.white)
-                            .cornerRadius(8)
-                            .scaleEffect(selectedChoice == number ? 0.9 : 1.0)
-                            .animation(.spring(response: 0.3, dampingFraction: 0.6), value: selectedChoice)
                         }
                     }
                 }
             }
-        }
-        .onAppear {
-            startTest()
-        }
-        .padding()
-        .onDisappear {
-            timer?.invalidate()
-            timer = nil
+            .onAppear {
+                startTest()
+            }
+            .padding()
+            .onDisappear {
+                timer?.invalidate()
+                timer = nil
+            }
         }
     }
+
     
-    // Get shape name
     func getShapeName(for symbol: String) -> String {
         switch symbol {
         case "circle.fill":
@@ -122,19 +118,16 @@ struct SymbolMatchingTestView: View {
         }
     }
     
-    // Feedback color
     func buttonColor(for number: Int) -> Color {
         if let selected = selectedChoice, selected == number {
             if let correct = lastCorrect {
-                return correct ? .green : .red
+                return correct ? .safe : .warning
             }
         }
-        return Color.blue
+        return Color.nightAccent
     }
     
-    // Test logic
     func startTest() {
-        // Reset
         correctCount = 0
         timeLeft = testDuration
         testEnded = false
@@ -142,7 +135,6 @@ struct SymbolMatchingTestView: View {
         selectedChoice = nil
         lastCorrect = nil
         
-        // Assign unique numbers to symbols
         var assignedNumbers = Set<Int>()
         for symbol in symbols {
             var num: Int
@@ -153,10 +145,8 @@ struct SymbolMatchingTestView: View {
             symbolNumberMap[symbol] = num
         }
         
-        // Start first symbol
         nextSymbol()
-        
-        // Start timer
+
         timer?.invalidate()
         timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { t in
             if timeLeft > 0 {
@@ -181,12 +171,9 @@ struct SymbolMatchingTestView: View {
     func handleAnswer(choice: Int) {
         guard !testEnded else { return }
 
-        
-        // Track reaction time
         let reaction = Date().timeIntervalSince(symbolShownTime)
         reactionTimes.append(reaction)
-        
-        // Check correctness
+
         if let correctNumber = symbolNumberMap[currentSymbol] {
             lastCorrect = choice == correctNumber
             if lastCorrect! {
@@ -195,7 +182,6 @@ struct SymbolMatchingTestView: View {
         }
         selectedChoice = choice
         
-        // Move to next symbol after brief delay for feedback
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             guard !testEnded else { return }
             nextSymbol()

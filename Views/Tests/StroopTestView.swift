@@ -1,18 +1,14 @@
-//
-//  SwiftUIView.swift
-//  SSC2026
-//
-//  Created by Harshitha Rajesh on 1/10/26.
-//
 
 import SwiftUI
 
+// Components of a question
 struct Question {
     var word: String
     var color: Color
     var isCongruent: Bool
 }
 
+// Stroop test
 struct StroopTestView: View {
     @Environment(\.dismiss) private var dismiss
     
@@ -33,56 +29,65 @@ struct StroopTestView: View {
     @State private var trialStartTime: Date?
     
     var body: some View {
-        VStack(spacing: 30) {
-            if testEnded {
-                Text("Test Complete!")
-                
-                Text("Average Reaction Time: \(averageReactionTime(), specifier: "%.2f") s")
-                Text("Accuracy: \(accuracyPercentage(), specifier: "%.0f")%")
+        ZStack {
+            Background()
+                .ignoresSafeArea()
+            VStack(spacing: 60) {
+                if testEnded {
+                    Text("Test Complete")
+                    
+                    Button {
+                        onDismiss()
+                    } label: {
+                        PrimaryButtonStyleView(title: "Done")
+                    }
+                    .padding(.horizontal)
 
-            } else {
-                if !questions.isEmpty {
-                    let currentQ = questions[currentIndex]
-
-                    VStack(spacing: 30) {
-                        Text("Question \(currentIndex + 1)/\(questions.count)")
-                            .font(.headline)
+                    
+                } else {
+                    if !questions.isEmpty {
+                        let currentQ = questions[currentIndex]
                         
-                        Text(currentQ.word)
-                            .font(.largeTitle)
-                            .foregroundStyle(currentQ.color)
-                        
-                        
-                        
-                        HStack {
-                            ForEach(0..<words.count, id: \.self) { index in
-                                let colorName = words[index]
-                                let colorValue = colors[index]
-                                                        
-                                Button {
-                                    recordAnswer(selectedColor: colorValue)
-                                } label: {
-                                    Text(colorName)
-                                        .foregroundStyle(Color.gray)
-                                        .font(.headline)
-                                        .padding(12)
-                                        .frame(minWidth: 60)
-                                        .background(
-                                            RoundedRectangle(cornerRadius: 8)
-                                                .stroke(Color.black.opacity(0.2), lineWidth: 1)
-                                        )
+                        VStack(spacing: 30) {
+                            Text("Question \(currentIndex + 1)/\(questions.count)")
+                                .font(.headline)
+                            
+                            Text(currentQ.word)
+                                .font(.largeTitle)
+                                .foregroundStyle(currentQ.color)
+                            
+                            
+                            
+                            HStack {
+                                ForEach(0..<words.count, id: \.self) { index in
+                                    let colorName = words[index]
+                                    let colorValue = colors[index]
+                                    
+                                    Button {
+                                        recordAnswer(selectedColor: colorValue)
+                                    } label: {
+                                        Text(colorName)
+                                            .foregroundStyle(Color.gray)
+                                            .font(.headline)
+                                            .padding(12)
+                                            .frame(minWidth: 60)
+                                            .background(
+                                                RoundedRectangle(cornerRadius: 8)
+                                                    .stroke(Color.black.opacity(0.2), lineWidth: 1)
+                                            )
+                                    }
                                 }
                             }
                         }
-                    }
-                    .onAppear {
-                        trialStartTime = Date()
+                        .onAppear {
+                            trialStartTime = Date()
+                        }
                     }
                 }
             }
-        }
-        .onAppear {
-            startTest()
+            .onAppear {
+                startTest()
+            }
         }
     }
     
@@ -91,7 +96,6 @@ struct StroopTestView: View {
         
         let congruentCount = max(1, qCount / 5)
         
-        // Congruent questions
         for _ in 0..<congruentCount {
             let index = Int.random(in: 0..<words.count)
             let word = words[index]
@@ -100,10 +104,9 @@ struct StroopTestView: View {
             let question = Question(word: word, color: color, isCongruent: true)
             generatedQuestions.append(question)
         }
-        
-        // Incongruent questions
+
         for _ in 0..<(qCount - congruentCount) {
-            var wordIndex = Int.random(in: 0..<words.count)
+            let wordIndex = Int.random(in: 0..<words.count)
             var colorIndex = Int.random(in: 0..<colors.count)
             
             while wordIndex == colorIndex {

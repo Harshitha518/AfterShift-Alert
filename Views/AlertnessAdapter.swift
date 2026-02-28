@@ -1,10 +1,3 @@
-//
-//  File.swift
-//  SSC2026
-//
-//  Created by Harshitha Rajesh on 1/25/26.
-//
-
 
 import Foundation
 
@@ -13,7 +6,7 @@ struct AlertnessAdapter {
     static func evaluate(
         wakeUpTime: TimeOfDay,
         shiftEndTime: TimeOfDay,
-        sleepHours: Double,
+        sleepHistory: [Double],
         hadCloseCall: Bool
     ) -> AlertnessResult {
 
@@ -23,10 +16,18 @@ struct AlertnessAdapter {
         )
 
         let currentHour = shiftEndTime.hour
+        
+        let lastNightSleep = sleepHistory.first ?? 0
+        let requiredSleep = 8.0
+
+        let cumulativeDebt = sleepHistory
+            .map { max(0, requiredSleep - $0) }
+            .reduce(0, +)
 
         var score = AlertnessModel.computeAlertness(
             hoursAwake: hoursAwake,
-            hoursSleptLast24h: sleepHours,
+            hoursSleptLast24h: lastNightSleep,
+            cumulativeSleepDebt: cumulativeDebt,
             currentHour: currentHour
         )
 
@@ -34,9 +35,9 @@ struct AlertnessAdapter {
         var confidence = 0.85
 
         // Sleep deprivation
-        if sleepHours < 6 {
+        if lastNightSleep < 6 {
             explanations.append(
-                "Sleep deprivation detected (\(String(format: "%.1f", sleepHours))h < 6h recommended)"
+                "Sleep deprivation detected (\(String(format: "%.1f", lastNightSleep))h < 6h recommended)"
             )
             confidence = min(confidence, 0.75)
         }
@@ -64,7 +65,7 @@ struct AlertnessAdapter {
         }
 
         // Positive case
-        if sleepHours >= 7 && hoursAwake <= 14 {
+        if lastNightSleep >= 7 && hoursAwake <= 14 {
             explanations.append("Adequate sleep and limited wake duration")
             confidence = 0.90
         }

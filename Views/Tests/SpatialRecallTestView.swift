@@ -1,12 +1,7 @@
-//
-//  SpatialRecallTestView.swift
-//  SSC2026
-//
-//  Created by Harshitha Rajesh on 1/4/26.
-//
 
 import SwiftUI
 
+// Matching sequence test
 struct SpatialRecallTestView: View {
     let onComplete: @MainActor (Double) -> Void
     let onDismiss: () -> Void
@@ -32,52 +27,55 @@ struct SpatialRecallTestView: View {
     @State private var totalTaps = 0
 
     var body: some View {
-        VStack(spacing: 30) {
-            if testEnded {
-                VStack(spacing: 24) {
-                    Text("Test Complete")
-                        .font(.largeTitle)
-                        .bold()
+        ZStack {
+            Background()
+                .ignoresSafeArea()
+            VStack(spacing: 30) {
+                if testEnded {
+                    VStack(spacing: 60) {
+                        Text("Test Complete")
+                            .font(.largeTitle)
+                            .bold()
 
-                    Text("This test measures working memory and spatial sequence recall.")
-                        .font(.subheadline)
-                        .foregroundStyle(Color.secondary)
-                        .multilineTextAlignment(.center)
+                                        
+                        Button {
+                            onDismiss()
+                        } label: {
+                            PrimaryButtonStyleView(title: "Done")
+                        }
+                        .padding(.horizontal)
 
-                    Button("Done") {
-                        onDismiss()
                     }
-                    .buttonStyle(.borderedProminent)
-                }
-            } else {
-                Text("Round \(currentRound)/\(totalRounds) — \(showingFlash ? "Watch the sequence" : "Repeat the sequence")")
-                    .font(.headline)
-
-                if !showingFlash {
-                    Text("Step \(userInput.count)/\(sequenceLength)")
-                        .font(.subheadline)
-                        .foregroundStyle(Color.secondary)
-                }
-
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: gridSize), spacing: 20) {
-                    ForEach(0..<gridSize*gridSize, id: \.self) { index in
-                        Rectangle()
-                            .foregroundColor(colorForBlock(index))
-                            .frame(width: 80, height: 80)
-                            .cornerRadius(8)
-                            .onTapGesture {
-                                if !showingFlash {
-                                    handleUserTap(index)
+                } else {
+                    Text("Round \(currentRound)/\(totalRounds) — \(showingFlash ? "Watch the sequence" : "Repeat the sequence")")
+                        .font(.headline)
+                    
+                    if !showingFlash {
+                        Text("Step \(userInput.count)/\(sequenceLength)")
+                            .font(.subheadline)
+                            .foregroundStyle(Color.secondary)
+                    }
+                    
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: gridSize), spacing: 20) {
+                        ForEach(0..<gridSize*gridSize, id: \.self) { index in
+                            Rectangle()
+                                .foregroundColor(colorForBlock(index))
+                                .frame(width: 80, height: 80)
+                                .cornerRadius(8)
+                                .onTapGesture {
+                                    if !showingFlash {
+                                        handleUserTap(index)
+                                    }
                                 }
-                            }
-                            .animation(.easeInOut(duration: 0.2), value: showingFlash)
+                                .animation(.easeInOut(duration: 0.2), value: showingFlash)
+                        }
                     }
                 }
             }
-        }
-        .padding()
-        .onAppear {
-            startNextRound()
+            .padding()
+            .onAppear {
+                startNextRound()
+            }
         }
     }
 
@@ -103,13 +101,12 @@ struct SpatialRecallTestView: View {
     func flashNextBlock() {
         guard currentFlashIndex < sequenceLength else {
             showingFlash = false
-            replicationStartTime = Date() // start timing user taps
+            replicationStartTime = Date()
             return
         }
 
         showingFlash = true
-        let blockToFlash = sequence[currentFlashIndex]
-
+      
         DispatchQueue.main.asyncAfter(deadline: .now() + flashDuration) {
             currentFlashIndex += 1
             flashNextBlock()
@@ -118,11 +115,11 @@ struct SpatialRecallTestView: View {
 
     func colorForBlock(_ index: Int) -> Color {
         if showingFlash && currentFlashIndex < sequence.count && index == sequence[currentFlashIndex] {
-            return .yellow
+            return Color.nightAccent
         } else if userInput.contains(index) {
-            return .green
+            return Color.safe
         } else if index == lastTappedBlock {
-            return .orange.opacity(0.8)
+            return .white.opacity(0.8)
         } else {
             return .gray.opacity(0.3)
         }
@@ -131,12 +128,10 @@ struct SpatialRecallTestView: View {
     func handleUserTap(_ index: Int) {
         guard let start = replicationStartTime else { return }
 
-        // Record reaction time
         let reaction = Date().timeIntervalSince(start)
         reactionTimes.append(reaction)
-        replicationStartTime = Date() // reset timer for next tap
+        replicationStartTime = Date()
 
-        // Track if correct
         if userInput.count < sequence.count && index == sequence[userInput.count] {
             correctSteps += 1
         }
@@ -144,7 +139,6 @@ struct SpatialRecallTestView: View {
         totalTaps += 1
         lastTappedBlock = index
         if userInput.last == index {
-            // flash clearly if tapped twice in a row
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
                 lastTappedBlock = nil
             }
@@ -176,15 +170,11 @@ struct SpatialRecallTestView: View {
         let totalSteps = totalTaps
         let accuracy = totalSteps > 0 ? Double(totalCorrectSteps) / Double(totalSteps) : 0
 
-        // Average reaction time per tap
         let avgReaction = reactionTimes.isEmpty ? 0 : reactionTimes.reduce(0, +) / Double(reactionTimes.count)
 
-        // Convert reaction time → speed score (0–100)
-        // Example: assume 3s is the slowest reasonable reaction per tap
         let maxReaction: Double = 3
         let speedScore = max(0, min(100, 100 * (1 - avgReaction / maxReaction)))
 
-        // Weighted alertness score: 70% accuracy, 30% speed
         let alertnessScore = max(0, min(100, accuracy * 100 * 0.7 + speedScore * 0.3))
 
         Task { @MainActor in

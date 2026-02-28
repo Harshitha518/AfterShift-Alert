@@ -13,12 +13,25 @@
 
 import Foundation
 
+
+struct AlertnessResult {
+    let score: Double
+    let kssEquivalent: Double
+    
+    var confidence: Double = 0.95
+    var explanation: [String] = []
+
+}
+
 struct AlertnessModel {
 
 
-    static func computeAlertness(hoursAwake: Double, hoursSleptLast24h: Double, currentHour: Int) -> Double {
+    static func computeAlertness(hoursAwake: Double, hoursSleptLast24h: Double, cumulativeSleepDebt: Double, currentHour: Int) -> Double {
 
-        let sleepScore = sleepRecoveryScore(hoursSlept: hoursSleptLast24h)
+        let sleepScore = sleepRecoveryScore(
+            hoursSlept: hoursSleptLast24h,
+            cumulativeDebt: cumulativeSleepDebt
+        )
         let circadianScore = circadianAlertness(hour: currentHour)
         let wakePenalty = wakeDurationPenalty(hoursAwake: hoursAwake)
 
@@ -38,16 +51,15 @@ struct AlertnessModel {
         return clamp(rawScore, min: 0, max: 100)
     }
 
-    // Process S (Sleep Recovery)
-
-    // Non-linear recovery: small sleep ≠ small benefit
-    private static func sleepRecoveryScore(hoursSlept: Double) -> Double {
+    // Process S (non-linear sleep recovery)
+    private static func sleepRecoveryScore(hoursSlept: Double, cumulativeDebt: Double) -> Double {
         let h = clamp(hoursSlept, min: 0, max: 9)
 
-        // logistic-style recovery curve
-        // midpoint ~5.5h (chronic restriction threshold)
+        // logistic (sigmoid) function to model recovery curve
+      
         let k = 1.2
         let midpoint = 5.5
+        
 
         return 1.0 / (1.0 + exp(-k * (h - midpoint)))
     }
@@ -101,40 +113,6 @@ struct AlertnessModel {
         Swift.max(min, Swift.min(max, value))
     }
     
-    static func generateCurves(
-        currentHour: Int,
-        hoursAwake: Double,
-        hoursSlept: Double
-    ) -> [AlertnessCurvePoint] {
-
-        var points: [AlertnessCurvePoint] = []
-
-        for offset in stride(from: -12.0, through: 12.0, by: 0.5) {
-            let hour = (Double(currentHour) + offset + 24)
-                .truncatingRemainder(dividingBy: 24)
-
-            let circadian = circadianAlertness(hour: Int(hour))
-            let sleepPressure = min(1.0, (hoursAwake + offset) / 18.0)
-            let inertia = offset < 1 ? exp(-offset * 2) : 0
-
-            let alertness =
-                0.5 * circadian +
-                0.4 * (1 - sleepPressure) -
-                0.1 * inertia
-
-            points.append(
-                AlertnessCurvePoint(
-                    hourOffset: offset,
-                    circadian: circadian,
-                    sleepPressure: sleepPressure,
-                    inertia: inertia,
-                    alertness: clamp(alertness, min: 0, max: 1)
-                )
-            )
-        }
-
-        return points
-    }
 
     
 }

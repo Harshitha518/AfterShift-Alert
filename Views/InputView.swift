@@ -1,155 +1,7 @@
-//
-//  SwiftUIView.swift
-//  SSC2026
-//
-//  Created by Harshitha Rajesh on 1/3/26.
-//
 
 import SwiftUI
 
-struct AlertnessResult {
-    let score: Double
-    let kssEquivalent: Double
-    
-    var confidence: Double = 0.95
-    var explanation: [String] = []
-
-}
-
-
-extension Color {
-    static let backgroundTop = Color(red: 0.06, green: 0.09, blue: 0.18)
-    static let backgroundBottom = Color(red: 0.02, green: 0.06, blue: 0.09)
-    
-    static let card = Color.white.opacity(0.05)
-    static let stroke = Color.white.opacity(0.06)
-    
-    static let nightAccent = Color(red: 0.42, green: 0.55, blue: 0.75)
-    static let safe = Color(red: 0.42, green: 0.65, blue: 0.55)
-    static let warning = Color(red: 0.82, green: 0.45, blue: 0.45)
-}
-
-
-struct Background: View {
-    
-    @State private var animate = false
-    
-    var body: some View {
-        GeometryReader { geo in
-            ZStack {
-                
-                // 1️⃣ Base diagonal gradient (deeper contrast)
-                LinearGradient(
-                    colors: [
-                        Color(red: 0.03, green: 0.06, blue: 0.14),
-                        Color(red: 0.01, green: 0.02, blue: 0.06)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-                
-                // 2️⃣ Large moving accent glow
-                Circle()
-                    .fill(
-                        RadialGradient(
-                            colors: [
-                                Color.nightAccent.opacity(0.45),
-                                Color.clear
-                            ],
-                            center: .center,
-                            startRadius: 0,
-                            endRadius: geo.size.width * 0.6
-                        )
-                    )
-                    .frame(width: geo.size.width * 0.9)
-                    .offset(
-                        x: animate ? geo.size.width * 0.3 : -geo.size.width * 0.3,
-                        y: animate ? -geo.size.height * 0.2 : geo.size.height * 0.2
-                    )
-                    .blur(radius: 120)
-                    .animation(
-                        .easeInOut(duration: 18).repeatForever(autoreverses: true),
-                        value: animate
-                    )
-                
-                // 3️⃣ Secondary green glow
-                Circle()
-                    .fill(
-                        RadialGradient(
-                            colors: [
-                                Color.safe.opacity(0.35),
-                                Color.clear
-                            ],
-                            center: .center,
-                            startRadius: 0,
-                            endRadius: geo.size.width * 0.5
-                        )
-                    )
-                    .frame(width: geo.size.width * 0.8)
-                    .offset(
-                        x: animate ? -geo.size.width * 0.25 : geo.size.width * 0.25,
-                        y: animate ? geo.size.height * 0.3 : -geo.size.height * 0.3
-                    )
-                    .blur(radius: 140)
-                    .animation(
-                        .easeInOut(duration: 22).repeatForever(autoreverses: true),
-                        value: animate
-                    )
-                
-                // 4️⃣ Subtle light grain / shimmer layer
-                LinearGradient(
-                    colors: [
-                        Color.white.opacity(0.04),
-                        Color.clear,
-                        Color.white.opacity(0.04)
-                    ],
-                    startPoint: animate ? .topLeading : .bottomTrailing,
-                    endPoint: animate ? .bottomTrailing : .topLeading
-                )
-                .blendMode(.overlay)
-                .animation(
-                    .easeInOut(duration: 14).repeatForever(autoreverses: true),
-                    value: animate
-                )
-            }
-            .ignoresSafeArea()
-            .onAppear { animate = true }
-        }
-    }
-}
-
-
-struct Card<Content: View>: View {
-    let content: Content
-    
-    init(@ViewBuilder content: () -> Content) {
-        self.content = content()
-    }
-    
-    var body: some View {
-        if #available(iOS 26.0, *) {
-            content
-                .padding(24)
-                .glassEffect(in: .rect(cornerRadius: 20))
-            
-        } else {
-      
-            content
-                .padding(24)
-                .background(
-                    RoundedRectangle(cornerRadius: 20)
-                        .fill(Color.card)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 20)
-                                .stroke(Color.stroke, lineWidth: 1)
-                        )
-                )
-        }
-    }
-}
-
-
-
+// View for user to input information needed to calculate alerntess
 struct InputView: View {
     
     enum GuideStep {
@@ -165,7 +17,7 @@ struct InputView: View {
     var guideText: String {
         switch guideStep {
         case .intro:
-            return "Welcome! This tool estimates your alertness at the end of your shift using a biologically informed model that considers sleep pressure, your circadian rhythm, and time awake."
+            return "Let’s estimate your alertness for the end of your shift. Answer a few quick questions about your recent sleep and shift timing so we can estimate how ready you are to drive. The more accurate your inputs, the more meaningful your alertness score will be."
             
         case .shiftTimeline:
             return "First, set when you woke up and when your shift ends. These times help calculate your circadian alertness (Process C), which reflects the natural peaks and dips in attention across the day."
@@ -177,7 +29,7 @@ struct InputView: View {
             return "Finally, let us know if you’ve experienced any recent drowsy driving close calls. This adds context to your alertness risk, accounting for individual sensitivity to sleep deprivation."
             
         case .review:
-            return "All done! Review your inputs and tap \"Analyze Driving Risk\" to see your estimated alertness, including the combined effects of sleep, circadian rhythm, and time awake."
+            return "All done! Review your inputs and tap \"Analyze Driving Risk\". You will be presented with the option to take alertness tests."
         }
     }
     
@@ -203,6 +55,12 @@ struct InputView: View {
         }
     }
 
+    enum AssessmentMode {
+        case fast
+        case advanced
+    }
+    
+    @State private var mode: AssessmentMode = .fast
     
     @State private var wakeUpTime: Date = {
         let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: Date())!
@@ -214,6 +72,9 @@ struct InputView: View {
     }()
     
     @State private var sleepHours = 5.0
+    @State private var sleepTwoDaysAgo = 5.0
+    @State private var sleepThreeDaysAgo = 5.0
+    
     @State private var hadCloseCall = false
     
     var hoursAwake: Double {
@@ -233,10 +94,12 @@ struct InputView: View {
                     HStack(alignment: .bottom, spacing: 40) {
                         
                         VStack {
+                            
+                            // Guide isntructions
                             Card {
                                 VStack(alignment: .leading, spacing: 24) {
                                     
-                                    // STEP HEADER
+                         
                                     HStack(spacing: 10) {
                                         Image(systemName: "book.fill")
                                         Text("Step \(currentStepNumber) of \(totalSteps)")
@@ -244,7 +107,6 @@ struct InputView: View {
                                     }
                                     .foregroundStyle(.white.opacity(0.85))
                                     
-                                    // PROGRESS BAR
                                     ProgressView(
                                         value: Double(currentStepNumber),
                                         total: Double(totalSteps)
@@ -253,29 +115,32 @@ struct InputView: View {
                                     
                                     Divider().opacity(0.2)
                                     
-                                    // GUIDE TITLE
                                     Text(guideTitle)
                                         .font(.title.bold())
                                         .foregroundStyle(.white)
                                     
-                                    // GUIDE BODY
                                     Text(guideText)
                                         .font(.title)
                                         .foregroundStyle(.white.opacity(0.8))
                                         .fixedSize(horizontal: false, vertical: true)
                                     
                                     Spacer(minLength: 20)
-                                    
-                                    if guideStep != .review {
-                                        Button(action: advanceGuide) {
-                                            Text("Continue")
-                                                .font(.headline)
-                                                .frame(maxWidth: .infinity)
-                                                .padding()
-                                                .background(Capsule().fill(Color.nightAccent))
-                                                .foregroundStyle(.white)
+                                    HStack {
+                               
+                                        if guideStep != .intro {
+                                            Button(action: previousStep) {
+                                                SecondaryButtonStyleView(title: "Back")
+                                            }
+                                        }
+
+                        
+                                        if guideStep != .review {
+                                            Button(action: advanceGuide) {
+                                                PrimaryButtonStyleView(title: "Continue")
+                                            }
                                         }
                                     }
+                                    .padding(.horizontal, 0)
                                 }
                             }
                         }
@@ -287,12 +152,14 @@ struct InputView: View {
                         
                         
                         VStack(spacing: 24) {
-                            // Shift Timeline
+                       
+                            // Input cards
                             Card {
                                 VStack(alignment: .leading, spacing: 16) {
                                     Label("Shift Timeline", systemImage: "clock.fill")
                                         .font(.title3.bold())
                                         .foregroundStyle(.white.opacity(0.9))
+                                    
                                     
                                     DatePicker(
                                         "When did you wake up?",
@@ -348,12 +215,18 @@ struct InputView: View {
                             .allowsHitTesting(guideStep == .shiftTimeline || guideStep == .review)
                             
                             
-                            // Sleep Context
                             Card {
                                 VStack(alignment: .leading, spacing: 16) {
                                     Label("Sleep Context", systemImage: "bed.double.fill")
                                         .font(.title3.bold())
                                         .foregroundStyle(.white.opacity(0.9))
+                                    
+                                    Picker("Mode", selection: $mode) {
+                                        Text("Quick").tag(AssessmentMode.fast)
+                                        Text("3 Day Pattern").tag(AssessmentMode.advanced)
+                                    }
+                                    .pickerStyle(.segmented)
+                                    .tint(.nightAccent)
                                     
                                     HStack {
                                         Text("Sleep in last 24 hours")
@@ -366,14 +239,36 @@ struct InputView: View {
                                     
                                     Slider(value: $sleepHours, in: 0...12, step: 0.5)
                                         .tint(.nightAccent)
+                                    
+                                    if mode == .advanced {
+                                        
+                                        Divider().opacity(0.2)
+                                        
+                                        HStack {
+                                            Text("Sleep 2 nights ago")
+                                            Spacer()
+                                            Text("\(sleepTwoDaysAgo, specifier: "%.1f") hour(s)")
+                                                .font(.headline)
+                                                .foregroundStyle(Color.safe)                                        }
+                                        Slider(value: $sleepTwoDaysAgo, in: 0...12, step: 0.5)
+                                            .tint(.nightAccent)
+                                        
+                                        HStack {
+                                            Text("Sleep 3 nights ago")
+                                            Spacer()
+                                            Text("\(sleepThreeDaysAgo, specifier: "%.1f") hour(s)")
+                                                .font(.headline)
+                                                .foregroundStyle(Color.safe)                                        }
+                                        Slider(value: $sleepThreeDaysAgo, in: 0...12, step: 0.5)
+                                            .tint(.nightAccent)
+                                    }
                                 }
                             }
                             .highlight(guideStep == .sleepContext)
                             .opacity(guideStep == .sleepContext || guideStep == .review ? 1 : 0.5)
                             .allowsHitTesting(guideStep == .sleepContext || guideStep == .review)
                             
-                            
-                            // Driving History
+
                             Card {
                                 VStack(alignment: .leading, spacing: 16) {
                                     Label("Driving History", systemImage: "steeringwheel")
@@ -395,36 +290,30 @@ struct InputView: View {
                             
                             Spacer()
                             
+                            // Continue to next view
                             if guideStep == .review {
                                 
                                 NavigationLink(destination:
-                                                TestListView(
-                                                    baseAlertness: AlertnessAdapter.evaluate(
-                                                        wakeUpTime: wakeUpTime.timeOfDay,
-                                                        shiftEndTime: shiftEndTime.timeOfDay,
-                                                        sleepHours: sleepHours,
-                                                        hadCloseCall: hadCloseCall
-                                                    ),
-                                                    circadianLowWindow: "3–6 AM",
-                                                    wakeUpTime: wakeUpTime,
-                                                    shiftEndTime: shiftEndTime
-                                                )
+                                    TestListView(
+                                        baseAlertness: AlertnessAdapter.evaluate(
+                                            wakeUpTime: wakeUpTime.timeOfDay,
+                                            shiftEndTime: shiftEndTime.timeOfDay,
+                                            sleepHistory: sleepHistory(),
+                                            hadCloseCall: hadCloseCall
+                                        ),
+                                        circadianLowWindow: "3–6 AM",
+                                        wakeUpTime: wakeUpTime,
+                                        shiftEndTime: shiftEndTime
+                                    )
                                 ) {
-                                    Text("Analyze Driving Risk")
-                                        .font(.headline)
-                                        .frame(maxWidth: 300)
-                                        .padding()
-                                        .background(
-                                            Capsule()
-                                                .fill(Color.nightAccent)
-                                        )
-                                        .foregroundStyle(.white)
+                                    PrimaryButtonStyleView(title: "Analyze Driving Risk")
                                 }
                                 .buttonStyle(.plain)
                                 .animation(.easeInOut(duration: 0.4), value: sleepHours)
+                                .padding(.bottom, 20)
                             }
+                            
                         }
-//                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
                     .padding(40)
                     .frame(maxHeight: .infinity)
@@ -434,6 +323,7 @@ struct InputView: View {
             
         }
     }
+    
     func advanceGuide() {
         switch guideStep {
         case .intro: guideStep = .shiftTimeline
@@ -443,112 +333,29 @@ struct InputView: View {
         case .review: guideStep = .review
         }
     }
-
-}
-
-
-
-
-#Preview {
-    InputView()
-}
-
-
-
-struct AlertnessCurvePoint: Identifiable {
-    let id = UUID()
-    let hourOffset: Double   // -12 to +12
-    let circadian: Double    // 0–1
-    let sleepPressure: Double
-    let inertia: Double
-    let alertness: Double
-}
-
-struct LineGraph: View {
-    let values: [Double]
-    let color: Color
-    let lineWidth: CGFloat
-
-    var body: some View {
-        GeometryReader { geo in
-            Path { path in
-                guard values.count > 1 else { return }
-
-                let stepX = geo.size.width / CGFloat(values.count - 1)
-
-                for i in values.indices {
-                    let x = CGFloat(i) * stepX
-                    let y = geo.size.height * (1 - values[i])
-
-                    if i == 0 {
-                        path.move(to: CGPoint(x: x, y: y))
-                    } else {
-                        path.addLine(to: CGPoint(x: x, y: y))
-                    }
-                }
-            }
-            .stroke(color, lineWidth: lineWidth)
+    
+    func previousStep() {
+        switch guideStep {
+        case .shiftTimeline: guideStep = .intro
+        case .sleepContext: guideStep = .shiftTimeline
+        case .drivingHistory: guideStep = .sleepContext
+        case .review: guideStep = .drivingHistory
+        case .intro: break
         }
     }
-}
-
-struct AlertnessExplanationGraph: View {
-    let points: [AlertnessCurvePoint]
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Biological Drivers of Alertness")
-                .font(.caption)
-                .foregroundStyle(Color.secondary)
-
-            ZStack {
-                LineGraph(
-                    values: points.map { $0.circadian },
-                    color: .blue.opacity(0.6),
-                    lineWidth: 1
-                )
-
-                LineGraph(
-                    values: points.map { 1 - $0.sleepPressure },
-                    color: .red.opacity(0.6),
-                    lineWidth: 1
-                )
-
-                LineGraph(
-                    values: points.map { 1 - $0.inertia },
-                    color: .purple.opacity(0.6),
-                    lineWidth: 1
-                )
-
-                LineGraph(
-                    values: points.map { $0.alertness },
-                    color: .green,
-                    lineWidth: 3
-                )
-            }
-            .frame(height: 160)
-            .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(Color(.secondarySystemBackground))
-            )
-
-            HStack(spacing: 12) {
-                Label("Circadian", systemImage: "waveform")
-                    .foregroundStyle(Color.blue)
-                Label("Sleep Pressure", systemImage: "moon.fill")
-                    .foregroundStyle(Color.red)
-                Label("Inertia", systemImage: "zzz")
-                    .foregroundStyle(Color.purple)
-                Label("Overall", systemImage: "checkmark.seal.fill")
-                    .foregroundStyle(Color.green)
-            }
-            .font(.caption2)
+    
+    private func sleepHistory() -> [Double] {
+        switch mode {
+        case .fast:
+            return [sleepHours]
+        case .advanced:
+            return [sleepHours, sleepTwoDaysAgo, sleepThreeDaysAgo]
         }
     }
 }
 
 
-
+// Highlight for cards
 struct HighlightModifier: ViewModifier {
     let active: Bool
     

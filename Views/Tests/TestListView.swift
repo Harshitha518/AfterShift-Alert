@@ -1,10 +1,7 @@
-//
-//  TestListView.swift
-//  SSC2026
-//
 
 import SwiftUI
 
+// Different types of tests
 enum AlertnessTestType: Identifiable {
     case reaction
     case matching
@@ -15,16 +12,18 @@ enum AlertnessTestType: Identifiable {
     var id: Self { self }
 }
 
+// Importance of test to calculating alertness
 enum TestImportance {
     case primary
     case secondary
 }
 
+// Views for each test
 @MainActor
 @ViewBuilder
 func testView(
     for test: AlertnessTestType,
-    onComplete: @escaping (Double) -> Void,
+    onComplete: @Sendable @escaping (Double) -> Void,
     onDismiss: @escaping () -> Void
 ) -> some View {
     switch test {
@@ -41,6 +40,7 @@ func testView(
     }
 }
 
+// Components of alertness tests
 struct AlertnessTest: Identifiable {
     let id = UUID()
     let name: String
@@ -48,11 +48,13 @@ struct AlertnessTest: Identifiable {
     let measures: String
     let domain: CognitiveDomain
     let duration: String
+    let instructions: String
     let symbol: String
     let type: AlertnessTestType
     let importance: TestImportance
 }
 
+// Type of domains
 enum CognitiveDomain {
     case vigilance
     case attention
@@ -61,21 +63,22 @@ enum CognitiveDomain {
     case mentalCalculation
 }
 
+// Value/weightage of each test
 let testWeights: [AlertnessTestType: Double] = [
-    .reaction: 0.35,   // reaction time is most critical for driving
-    .stroop: 0.30,     // inhibition / cognitive control
-    .matching: 0.20,   // attention / processing speed
-    .recall: 0.10,     // working memory
-    .math: 0.05        // low relevance for driving
+    .reaction: 0.35,
+    .stroop: 0.30,
+    .matching: 0.20,
+    .recall: 0.10,
+    .math: 0.05
 ]
 
+// View showing option of all tests to take
 struct TestListView: View {
     let baseAlertness: AlertnessResult
     let circadianLowWindow: String
     let wakeUpTime: Date
     let shiftEndTime: Date
-    
-    
+
     let allTests: [AlertnessTest] = [
         AlertnessTest(
             name: "Reaction Tap",
@@ -83,6 +86,7 @@ struct TestListView: View {
             measures: "Simple reaction time",
             domain: .vigilance,
             duration: "5–15 sec",
+            instructions: "Wait for the screen to turn green, then tap as quickly as possible. There will be 5 rounds. Measures how alert and responsive you are right now.",
             symbol: "bolt.fill",
             type: .reaction,
             importance: .primary
@@ -93,6 +97,7 @@ struct TestListView: View {
             measures: "Attention & processing speed",
             domain: .attention,
             duration: "15 sec",
+            instructions: "Select the number that matches the symbol that appears on the screen based on the key as fast as you can before the 15 second timer runs out. Measures focus, attention, and processing speed.",
             symbol: "xmark.triangle.circle.square.fill",
             type: .matching,
             importance: .secondary
@@ -103,6 +108,7 @@ struct TestListView: View {
             measures: "Working memory",
             domain: .workingMemory,
             duration: "15–20 sec",
+            instructions: "Memorize the sequence of the highlighted 5 squares and reproduce it in order. There will be 5 rounds. Measures your short-term spatial memory.",
             symbol: "square.grid.3x3.middleleft.filled",
             type: .recall,
             importance: .secondary
@@ -113,6 +119,7 @@ struct TestListView: View {
             measures: "Cognitive control / inhibition",
             domain: .executiveFunction,
             duration: "10–20 sec",
+            instructions: "Select the correct color of the word, not what the word says, as fast as possible. There are 25 rounds. Measures your cognitive control and ability to resist distractions.",
             symbol: "brain.fill",
             type: .stroop,
             importance: .primary
@@ -123,21 +130,24 @@ struct TestListView: View {
             measures: "Focus & mental speed",
             domain: .mentalCalculation,
             duration: "10–15 sec",
+            instructions: "Solve quick addition problems as accurately and fast as possible. There are 25 rounds. Measures focus, calculation speed, and mental alertness.",
             symbol: "plus.app.fill",
             type: .math,
             importance: .secondary
         )
     ]
 
-    @State private var selectedTest: AlertnessTestType?
+    @State private var showingPreTest: AlertnessTest? = nil
+    @State private var selectedTest: AlertnessTestType? = nil
     @State private var completedTests: [AlertnessTestType: Double] = [:]
     @State private var goToFaceDetection = false
-    
+
     var body: some View {
         ZStack {
             Background()
             ScrollView(.vertical) {
                 VStack(alignment: .leading) {
+                    // Instructions + tracker and tests
                     Card {
                         HStack {
                             VStack(alignment: .leading, spacing: 8) {
@@ -145,7 +155,7 @@ struct TestListView: View {
                                     .font(.title.bold())
                                     .foregroundStyle(.white)
                                 
-                                Text("A battery of short cognitive and psychomotor tasks assessing alertness, attention, working memory, and executive function.")
+                                Text("A battery of short cognitive and psychomotor tasks assessing alertness, attention, working memory, and executive function. All of these tests are optional, but will improve accuracy of your Alertness score, as they are measuring alertness in real time.")
                                     .font(.headline)
                                     .foregroundStyle(.white.opacity(0.6))
                                     .padding(.bottom)
@@ -174,7 +184,6 @@ struct TestListView: View {
                     .padding(.bottom, 10)
                     
                     VStack(alignment: .leading, spacing: 20) {
-                        // Primary Tests
                         if !allTests.filter({ $0.importance == .primary }).isEmpty {
                             Text("Primary Tests")
                                 .font(.headline)
@@ -182,74 +191,51 @@ struct TestListView: View {
                                 .padding(.top)
                             HStack {
                                 ForEach(allTests.filter { $0.importance == .primary }) { test in
-                                    TestCard(test: test, completedTests: completedTests, selectedTest: $selectedTest)
+                                    TestCard(test: test, completedTests: completedTests, showingPreTest: $showingPreTest)
                                 }
                             }
                         }
-                        
-                        // Secondary Tests
+
+
                         if !allTests.filter({ $0.importance == .secondary }).isEmpty {
                             Text("Secondary Tests")
                                 .font(.headline)
                                 .foregroundStyle(.white)
-                            
+
                             ForEach(allTests.filter { $0.importance == .secondary }) { test in
-                                TestCard(test: test, completedTests: completedTests, selectedTest: $selectedTest)
+                                TestCard(test: test, completedTests: completedTests, showingPreTest: $showingPreTest)
                             }
                         }
-                        
+
                         Spacer()
                         
-                        // Continue Button
-                        Button(completedTests.isEmpty ? "Skip Tests" : "Continue") {
+                        Button(action: {
                             goToFaceDetection = true
+                        }) {
+                            PrimaryButtonStyleView(title: completedTests.isEmpty ? "Skip Tests" : "Continue")
                         }
-                        .padding()
-                        .frame(maxWidth: .infinity)
-                        .background(Capsule().fill(Color.nightAccent))
-                        .foregroundStyle(.white)
-                    }
-                    
-                    
-                }
-                .navigationTitle("Alertness Tests")
-                .sheet(item: $selectedTest) { testType in
-                    if #available(iOS 16.4, *) {
-                        testView(
-                            for: testType,
-                            onComplete: { score in
-                                completedTests[testType] = score
-                            },
-                            onDismiss: {
-                                selectedTest = nil
-                            }
-                        )
-                        .presentationBackground {
-                            Background()
-                        }
-                        .presentationBackgroundInteraction(.disabled)
-                    } else {
-                        // FIGURE OUT BG FOR HEREEEEE
-                        testView(
-                            for: testType,
-                            onComplete: { score in
-                                completedTests[testType] = score
-                            },
-                            onDismiss: {
-                                selectedTest = nil
-                            }
-                        )
 
                     }
-                
+                }
+                .navigationTitle("Alertness Tests")
+                .sheet(item: $showingPreTest) { test in
+                    PreTestInfoView(test: test) {
+                        selectedTest = test.type
+                        showingPreTest = nil
+                    }
+                }
+                .sheet(item: $selectedTest) { testType in
+                    testView(
+                        for: testType,
+                        onComplete: { score in
+                            completedTests[testType] = score
+                        },
+                        onDismiss: {
+                            selectedTest = nil
+                        }
+                    )
                 }
                 .navigationDestination(isPresented: $goToFaceDetection) {
-                    //            FaceDetectionView(
-                    //                alertness: combinedAlertness(),
-                    //                circadianLowWindow: circadianLowWindow,
-                    //                wakeUpTime: wakeUpTime,
-                    //                shiftEndTime: shiftEndTime
-                    //            )
                     ReductionView(
                         alertness: combinedAlertness(),
                         circadianLowWindow: circadianLowWindow,
@@ -264,19 +250,17 @@ struct TestListView: View {
     
     private func scoreColor(for score: Double) -> Color {
         switch score {
-        case 0..<40: return .red
+        case 0..<40: return .warning
         case 40..<70: return .orange
-        default: return .green
+        default: return .safe
         }
     }
     
     func combinedAlertness() -> AlertnessResult {
-        // If no tests completed, return base alertness
         if completedTests.isEmpty {
             return baseAlertness
         }
-        
-        // Calculate weighted penalty
+
         var weightedPenalty = 0.0
         var testExplanations: [String] = []
         
@@ -291,10 +275,10 @@ struct TestListView: View {
             }
         }
         
-        // Start with base score
+
         var finalScore = baseAlertness.score - weightedPenalty
+
         
-        // Critical safety penalties for specific tests
         if let reactionScore = completedTests[.reaction], reactionScore < 40 {
             finalScore -= 15
             testExplanations.append("Critical: Reaction time severely impaired")
@@ -305,10 +289,9 @@ struct TestListView: View {
             testExplanations.append("Warning: Cognitive control reduced")
         }
         
-        // Clamp to valid range
+
         finalScore = max(0, min(100, finalScore))
         
-        // Adjust confidence based on test performance
         var confidence = baseAlertness.confidence
         if weightedPenalty > 20 {
             confidence = min(confidence, 0.50)
@@ -318,7 +301,7 @@ struct TestListView: View {
             confidence = min(confidence, 0.85)
         }
         
-        // Combine explanations
+
         var allExplanations = baseAlertness.explanation
         allExplanations.append("Performance tests completed: \(completedTests.count)/\(allTests.count)")
         allExplanations.append(contentsOf: testExplanations)
@@ -327,7 +310,7 @@ struct TestListView: View {
             allExplanations.append("Test results indicate \(Int(weightedPenalty)) point reduction in alertness")
         }
         
-        // Recalculate KSS based on new score
+        
         let kss = 9.0 - (finalScore / 100.0) * 7.0
         
         return AlertnessResult(
@@ -336,77 +319,5 @@ struct TestListView: View {
             confidence: confidence,
             explanation: allExplanations
         )
-    }
-}
-
-
-struct TestCard: View {
-    var test: AlertnessTest
-    var completedTests: [AlertnessTestType: Double]
-    @Binding var selectedTest: AlertnessTestType?
-
-    var body: some View {
-        HStack {
-            Image(systemName: test.symbol)
-                .font(.largeTitle)
-                .foregroundStyle(Color.nightAccent)
-                .padding()
-            
-            VStack(alignment: .leading, spacing: 6) {
-                Text(test.name)
-                    .font(.title3.bold())
-                    .foregroundStyle(.white.opacity(0.9))
-                
-                Text("Measures: \(test.measures)")
-                    .font(.subheadline)
-                    .foregroundStyle(.white.opacity(0.6))
-                
-                Text("Duration: \(test.duration)")
-                    .font(.subheadline)
-                    .foregroundStyle(.white.opacity(0.6))
-            }
-            
-            Spacer()
-            
-            if let score = completedTests[test.type] {
-                VStack(spacing: 2) {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(Color.safe)
-                    Text("\(score, specifier: "%.0f")%")
-                        .font(.caption)
-                        .foregroundStyle(Color.secondary.opacity(0.7))
-                }
-            } else {
-                Button {
-                    selectedTest = test.type
-                } label: {
-                    Text("Take Test")
-                        .font(.subheadline.bold())
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 6)
-                        .background(
-                            Capsule()
-                                .fill(Color.nightAccent)
-                        )
-                        .foregroundStyle(.white)
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(.vertical, 10)
-        .padding(.horizontal, 12)
-        .background(
-            RoundedRectangle(cornerRadius: 20)
-                .fill(Color.card)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 20)
-                        .stroke(selectedTest == test.type ? Color.nightAccent : Color.clear, lineWidth: 2)
-                )
-                .shadow(color: selectedTest == test.type ? Color.nightAccent.opacity(0.4) : .clear, radius: 6, x: 0, y: 2)
-                .animation(.easeInOut(duration: 0.3), value: selectedTest)
-
-        )
-        .listRowBackground(Color.clear)
-        .listRowSeparator(.hidden)
     }
 }

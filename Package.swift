@@ -17,11 +17,10 @@ let package = Package(
             name: "SSC2026",
             targets: ["AppModule"],
             bundleIdentifier: "Harshitha.SSC2026",
-            teamIdentifier: "PFH3XMDK6L",
             displayVersion: "1.0",
             bundleVersion: "1",
-            appIcon: .placeholder(icon: .lightningBolt),
-            accentColor: .presetColor(.orange),
+            appIcon: .asset("AppIcon"),
+            accentColor: .presetColor(.blue),
             supportedDeviceFamilies: [
                 .pad,
                 .phone
@@ -40,5 +39,5 @@ let package = Package(
             path: "."
         )
     ],
-    swiftLanguageVersions: [.v6]
+    swiftLanguageVersions: [.version("6")]
 )
